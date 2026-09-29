@@ -1,0 +1,6 @@
+{
+  "name": "Metaa Craze Social Media Content Tracker",
+  "description": "Personal agency project management and monthly social media content production and publishing progress tracker for Metaa Craze Productions (Pvt) Ltd.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "Represents an agency client company and agreement details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique client document identifier" },
+        "clientId": { "type": "string", "description": "Agency client code, e.g. MC-CL-001" },
+        "name": { "type": "string", "description": "Client brand name" },
+        "companyName": { "type": "string", "description": "Registered company entity name" },
+        "contactPerson": { "type": "string", "description": "Primary client point of contact" },
+        "contactNumber": { "type": "string", "description": "Contact telephone or mobile number" },
+        "email": { "type": "string", "description": "Client email address" },
+        "monthlyPackageFee": { "type": "string", "description": "Monthly retainer fee note" },
+        "status": { "type": "string", "enum": ["Active", "Inactive"] },
+        "notes": { "type": "string", "description": "Production and aesthetic notes" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of creation" },
+        "defaultGraphicPostQty": { "type": "number", "description": "Agreed monthly graphic posts" },
+        "defaultVideoQty": { "type": "number", "description": "Agreed monthly videos" },
+        "defaultSpecialDayPostQty": { "type": "number", "description": "Agreed monthly special day posts" },
+        "defaultCoverPhotoQty": { "type": "number", "description": "Agreed monthly cover photos" },
+        "defaultOtherQty": { "type": "number", "description": "Agreed monthly other deliverables" }
+      },
+      "required": ["id", "name", "companyName", "status"]
+    },
+    "MonthlyPackage": {
+      "title": "MonthlyPackage",
+      "description": "Represents agreed monthly content deliverables for a client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique package document identifier" },
+        "packageId": { "type": "string", "description": "Display package code, e.g. PKG-202610-001" },
+        "clientId": { "type": "string", "description": "Reference to the client document ID" },
+        "month": { "type": "number", "description": "Reporting month 1-12" },
+        "year": { "type": "number", "description": "Reporting year" },
+        "graphicPostQty": { "type": "number", "description": "Quantity of graphic posts" },
+        "videoQty": { "type": "number", "description": "Quantity of video productions" },
+        "specialDayPostQty": { "type": "number", "description": "Quantity of special day posts" },
+        "coverPhotoQty": { "type": "number", "description": "Quantity of cover photos" },
+        "otherQty": { "type": "number", "description": "Quantity of other deliverables" },
+        "totalDeliverables": { "type": "number", "description": "Total deliverables sum" },
+        "status": { "type": "string", "enum": ["Active", "Completed", "In Planning"] },
+        "notes": { "type": "string", "description": "Monthly campaign package notes" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of creation" }
+      },
+      "required": ["id", "clientId", "month", "year", "totalDeliverables", "status"]
+    },
+    "ContentItem": {
+      "title": "ContentItem",
+      "description": "Represents an individual social media content deliverable",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique content item document identifier" },
+        "contentId": { "type": "string", "description": "Agency content code, e.g. CNT-202610-001" },
+        "clientId": { "type": "string", "description": "Reference to client document ID" },
+        "packageId": { "type": "string", "description": "Reference to package document ID" },
+        "month": { "type": "number", "description": "Month number 1-12" },
+        "year": { "type": "number", "description": "Year number" },
+        "contentType": {
+          "type": "string",
+          "enum": ["Graphic Post", "Video", "Special Day Post", "Cover Photo", "Other"]
+        },
+        "contentNumber": { "type": "number", "description": "Sequence index within type" },
+        "displayNumber": { "type": "string", "description": "Formatted label, e.g. Graphic Post 01" },
+        "title": { "type": "string", "description": "Deliverable title or description" },
+        "plannedDate": { "type": "string", "description": "Planned release date YYYY-MM-DD" },
+        "actualPublishedDate": { "type": "string", "description": "Actual published date YYYY-MM-DD" },
+        "status": {
+          "type": "string",
+          "enum": ["Not Started", "In Progress", "Pending Approval", "Approved", "Published", "On Hold"]
+        },
+        "postUrl": { "type": "string", "description": "Live social media URL" },
+        "remarks": { "type": "string", "description": "Internal notes or feedback" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of creation" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" }
+      },
+      "required": ["id", "clientId", "month", "year", "contentType", "status"]
+    }
+  },
+  "firestore": {
+    "/clients/{clientId}": {
+      "schema": { "$ref": "#/entities/Client" },
+      "description": "Agency client accounts and agreement settings"
+    },
+    "/packages/{packageId}": {
+      "schema": { "$ref": "#/entities/MonthlyPackage" },
+      "description": "Monthly deliverable commitments and scope"
+    },
+    "/content/{contentId}": {
+      "schema": { "$ref": "#/entities/ContentItem" },
+      "description": "Individual social media deliverables and tracker items"
+    }
+  }
+}

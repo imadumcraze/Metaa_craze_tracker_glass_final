@@ -1,17 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Client, InitialPackageData } from '../types';
-import { MONTH_NAMES } from '../lib/storage';
 import {
   X,
   Building2,
   User,
   Phone,
   Mail,
-  DollarSign,
   FileText,
-  Calculator,
-  Sparkles,
-  Layers,
   Trash2,
   AlertTriangle
 } from 'lucide-react';
@@ -20,6 +15,7 @@ interface ClientModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (client: Client, packageData?: InitialPackageData) => void;
+  onSaveAndSetDeliverables?: (client: Client) => void;
   onDelete?: (clientId: string) => void;
   clientToEdit?: Client | null;
   existingClientsCount: number;
@@ -31,6 +27,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  onSaveAndSetDeliverables,
   onDelete,
   clientToEdit,
   existingClientsCount,
@@ -46,43 +43,17 @@ export const ClientModal: React.FC<ClientModalProps> = ({
     email: '',
     monthlyPackageFee: '',
     status: 'Active',
-    notes: '',
-    defaultGraphicPostQty: 5,
-    defaultVideoQty: 5,
-    defaultSpecialDayPostQty: 1,
-    defaultCoverPhotoQty: 1,
-    defaultOtherQty: 0
+    notes: ''
   });
-
-  // Monthly content package creation options
-  const [createInitialPackage, setCreateInitialPackage] = useState(true);
-  const [autoGenerateItems, setAutoGenerateItems] = useState(true);
-  const [packageMonth, setPackageMonth] = useState(currentMonth);
-  const [packageYear, setPackageYear] = useState(currentYear);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Auto-calculated total deliverables
-  const totalDeliverables =
-    (Number(formData.defaultGraphicPostQty) || 0) +
-    (Number(formData.defaultVideoQty) || 0) +
-    (Number(formData.defaultSpecialDayPostQty) || 0) +
-    (Number(formData.defaultCoverPhotoQty) || 0) +
-    (Number(formData.defaultOtherQty) || 0);
-
   useEffect(() => {
     if (clientToEdit) {
       setFormData({
-        ...clientToEdit,
-        defaultGraphicPostQty: clientToEdit.defaultGraphicPostQty ?? 5,
-        defaultVideoQty: clientToEdit.defaultVideoQty ?? 5,
-        defaultSpecialDayPostQty: clientToEdit.defaultSpecialDayPostQty ?? 1,
-        defaultCoverPhotoQty: clientToEdit.defaultCoverPhotoQty ?? 1,
-        defaultOtherQty: clientToEdit.defaultOtherQty ?? 0
+        ...clientToEdit
       });
-      setCreateInitialPackage(false);
-      setAutoGenerateItems(false);
     } else {
       const nextNum = existingClientsCount + 1;
       const formattedNum = nextNum < 10 ? `00${nextNum}` : nextNum < 100 ? `0${nextNum}` : `${nextNum}`;
@@ -95,17 +66,8 @@ export const ClientModal: React.FC<ClientModalProps> = ({
         email: '',
         monthlyPackageFee: '',
         status: 'Active',
-        notes: '',
-        defaultGraphicPostQty: 5,
-        defaultVideoQty: 5,
-        defaultSpecialDayPostQty: 1,
-        defaultCoverPhotoQty: 1,
-        defaultOtherQty: 0
+        notes: ''
       });
-      setCreateInitialPackage(true);
-      setAutoGenerateItems(true);
-      setPackageMonth(currentMonth);
-      setPackageYear(currentYear);
     }
     setErrors({});
     setShowDeleteConfirm(false);
@@ -116,51 +78,45 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.name?.trim()) newErrors.name = 'Client Name is required';
-    if (!formData.companyName?.trim()) newErrors.companyName = 'Company / Business Name is required';
-    if (!formData.contactPerson?.trim()) newErrors.contactPerson = 'Contact Person is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const buildClient = (): Client => {
+    return {
+      ...(clientToEdit || {}),
+      id: clientToEdit?.id || `client-${Date.now()}`,
+      clientId: formData.clientId || `MC-CL-${Date.now().toString().slice(-3)}`,
+      name: formData.name?.trim() || '',
+      companyName: formData.companyName?.trim() || '',
+      contactPerson: formData.contactPerson?.trim() || '',
+      contactNumber: formData.contactNumber?.trim() || '',
+      email: formData.email?.trim() || '',
+      monthlyPackageFee: (() => {
+        const fee = formData.monthlyPackageFee?.trim() || '';
+        return fee && !/^(LKR|Rs\.?|\$)/i.test(fee) ? `LKR ${fee}` : fee;
+      })(),
+      status: formData.status || 'Active',
+      notes: formData.notes?.trim() || '',
+      createdAt: clientToEdit?.createdAt || new Date().toISOString()
+    };
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    onSave(buildClient());
+    onClose();
+  };
 
-    const client: Client = {
-      id: clientToEdit?.id || `client-${Date.now()}`,
-      clientId: formData.clientId || `MC-CL-${Date.now().toString().slice(-3)}`,
-      name: formData.name!.trim(),
-      companyName: formData.companyName!.trim(),
-      contactPerson: formData.contactPerson!.trim(),
-      contactNumber: formData.contactNumber?.trim() || '',
-      email: formData.email?.trim() || '',
-      monthlyPackageFee: formData.monthlyPackageFee?.trim() || '',
-      status: formData.status || 'Active',
-      notes: formData.notes?.trim() || '',
-      createdAt: clientToEdit?.createdAt || new Date().toISOString(),
-      defaultGraphicPostQty: Number(formData.defaultGraphicPostQty) || 0,
-      defaultVideoQty: Number(formData.defaultVideoQty) || 0,
-      defaultSpecialDayPostQty: Number(formData.defaultSpecialDayPostQty) || 0,
-      defaultCoverPhotoQty: Number(formData.defaultCoverPhotoQty) || 0,
-      defaultOtherQty: Number(formData.defaultOtherQty) || 0
-    };
-
-    let packageData: InitialPackageData | undefined;
-    if (createInitialPackage && totalDeliverables > 0) {
-      packageData = {
-        createPackageNow: true,
-        month: packageMonth,
-        year: packageYear,
-        graphicPostQty: Number(formData.defaultGraphicPostQty) || 0,
-        videoQty: Number(formData.defaultVideoQty) || 0,
-        specialDayPostQty: Number(formData.defaultSpecialDayPostQty) || 0,
-        coverPhotoQty: Number(formData.defaultCoverPhotoQty) || 0,
-        otherQty: Number(formData.defaultOtherQty) || 0,
-        autoGenerateContent: autoGenerateItems
-      };
+  const handleSetDeliverables = () => {
+    if (!validate()) return;
+    const client = buildClient();
+    if (onSaveAndSetDeliverables) {
+      onSaveAndSetDeliverables(client);
+    } else {
+      onSave(client);
     }
-
-    onSave(client, packageData);
     onClose();
   };
 
@@ -174,7 +130,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               {clientToEdit ? 'Edit Client Profile' : 'Add New Client'}
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Client profile & monthly content deliverables scope for Metaa Craze Productions
+              Client profile & contact details for Metaa Craze Productions
             </p>
           </div>
           <button
@@ -240,23 +196,22 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                  Company / Legal Business Name *
+                  Company / Legal Business Name
                 </label>
                 <input
                   type="text"
                   value={formData.companyName || ''}
                   onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                  className={`w-full bg-slate-800/80 border ${errors.companyName ? 'border-red-500' : 'border-slate-700'} rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500`}
+                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
                   placeholder="Apex Apparel Holdings (Pvt) Ltd"
                 />
-                {errors.companyName && <p className="text-red-400 text-xs mt-1">{errors.companyName}</p>}
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                  Contact Person *
+                  Contact Person
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
@@ -264,11 +219,10 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     type="text"
                     value={formData.contactPerson || ''}
                     onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
-                    className={`w-full bg-slate-800/80 border ${errors.contactPerson ? 'border-red-500' : 'border-slate-700'} rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500`}
+                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
                     placeholder="Dinesh Perera"
                   />
                 </div>
-                {errors.contactPerson && <p className="text-red-400 text-xs mt-1">{errors.contactPerson}</p>}
               </div>
 
               <div>
@@ -309,179 +263,16 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 Monthly Package Fee / Retainer
               </label>
               <div className="relative">
-                <DollarSign className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">LKR</span>
                 <input
                   type="text"
-                  value={formData.monthlyPackageFee || ''}
+                  value={(formData.monthlyPackageFee || '').replace(/^LKR\s*/i, '')}
                   onChange={(e) => setFormData({ ...formData, monthlyPackageFee: e.target.value })}
-                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                  placeholder="e.g. $750 / Month or LKR 125,000"
+                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-12 pr-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                  placeholder="e.g. 125,000 / Month"
                 />
               </div>
             </div>
-          </div>
-
-          {/* Section: Monthly Content Deliverables Scope */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-amber-500/30 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <Layers className="w-4 h-4" />
-                  <span>Monthly Content Deliverables We Will Create</span>
-                </span>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Define the content deliverables quota for this client (e.g. 5 videos, 5 posts, 1 special day, 1 cover photo)
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5 text-xs font-black text-amber-300 bg-amber-400/10 px-3 py-1.5 rounded-full border border-amber-400/30 shrink-0">
-                <Calculator className="w-3.5 h-3.5" />
-                <span>Total: {totalDeliverables} Deliverables</span>
-              </div>
-            </div>
-
-            {/* Inputs Grid for Content Types */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Graphic Posts
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.defaultGraphicPostQty ?? 5}
-                  onChange={(e) =>
-                    setFormData({ ...formData, defaultGraphicPostQty: Math.max(0, parseInt(e.target.value) || 0) })
-                  }
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-center text-sm font-bold text-white focus:outline-none focus:border-amber-500"
-                />
-                <span className="text-[10px] text-slate-500 block text-center mt-1">e.g. 5 posts</span>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Videos / Reels
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.defaultVideoQty ?? 5}
-                  onChange={(e) =>
-                    setFormData({ ...formData, defaultVideoQty: Math.max(0, parseInt(e.target.value) || 0) })
-                  }
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-center text-sm font-bold text-white focus:outline-none focus:border-amber-500"
-                />
-                <span className="text-[10px] text-slate-500 block text-center mt-1">e.g. 5 videos</span>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Special Day Post
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={formData.defaultSpecialDayPostQty ?? 1}
-                  onChange={(e) =>
-                    setFormData({ ...formData, defaultSpecialDayPostQty: Math.max(0, parseInt(e.target.value) || 0) })
-                  }
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-center text-sm font-bold text-white focus:outline-none focus:border-amber-500"
-                />
-                <span className="text-[10px] text-slate-500 block text-center mt-1">e.g. 1 Poya/holiday</span>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Cover Photo
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="20"
-                  value={formData.defaultCoverPhotoQty ?? 1}
-                  onChange={(e) =>
-                    setFormData({ ...formData, defaultCoverPhotoQty: Math.max(0, parseInt(e.target.value) || 0) })
-                  }
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-center text-sm font-bold text-white focus:outline-none focus:border-amber-500"
-                />
-                <span className="text-[10px] text-slate-500 block text-center mt-1">e.g. 1 banner</span>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Other Content
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={formData.defaultOtherQty ?? 0}
-                  onChange={(e) =>
-                    setFormData({ ...formData, defaultOtherQty: Math.max(0, parseInt(e.target.value) || 0) })
-                  }
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-center text-sm font-bold text-white focus:outline-none focus:border-amber-500"
-                />
-                <span className="text-[10px] text-slate-500 block text-center mt-1">Custom scope</span>
-              </div>
-            </div>
-
-            {/* Checkbox Options for Package & Content Generation */}
-            {!clientToEdit && (
-              <div className="pt-2 border-t border-slate-800/80 space-y-2.5">
-                <div className="flex items-center gap-2.5">
-                  <input
-                    type="checkbox"
-                    id="createInitialPackage"
-                    checked={createInitialPackage}
-                    onChange={(e) => setCreateInitialPackage(e.target.checked)}
-                    className="w-4 h-4 rounded text-amber-500 bg-slate-800 border-slate-700 focus:ring-amber-400"
-                  />
-                  <label htmlFor="createInitialPackage" className="text-xs text-slate-200 cursor-pointer flex items-center gap-1.5">
-                    <span>
-                      Create initial Monthly Package for:
-                    </span>
-                    <select
-                      value={packageMonth}
-                      onChange={(e) => setPackageMonth(Number(e.target.value))}
-                      disabled={!createInitialPackage}
-                      className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-xs text-amber-400 font-bold focus:outline-none disabled:opacity-50"
-                    >
-                      {MONTH_NAMES.map((m, idx) => (
-                        <option key={m} value={idx + 1}>{m}</option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      value={packageYear}
-                      onChange={(e) => setPackageYear(Number(e.target.value))}
-                      disabled={!createInitialPackage}
-                      className="w-16 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-white font-bold text-center focus:outline-none disabled:opacity-50"
-                    />
-                  </label>
-                </div>
-
-                {createInitialPackage && (
-                  <div className="flex items-center gap-2.5 pl-6">
-                    <input
-                      type="checkbox"
-                      id="autoGenerateItems"
-                      checked={autoGenerateItems}
-                      onChange={(e) => setAutoGenerateItems(e.target.checked)}
-                      className="w-4 h-4 rounded text-amber-500 bg-slate-800 border-slate-700 focus:ring-amber-400"
-                    />
-                    <label htmlFor="autoGenerateItems" className="text-xs text-amber-300 cursor-pointer flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      <span>
-                        Auto-generate <strong>{totalDeliverables} content items</strong> (Graphic Post 01..N, Video 01..N, etc.) in "Not Started" status.
-                      </span>
-                    </label>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Section: Notes */}
@@ -550,12 +341,30 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                className="px-5 py-2.5 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors shadow-lg shadow-amber-400/20"
-              >
-                {clientToEdit ? 'Save Changes' : 'Create Client & Set Deliverables'}
-              </button>
+              {clientToEdit ? (
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors shadow-lg shadow-amber-400/20"
+                >
+                  Save Changes
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 text-sm font-semibold text-amber-400 bg-slate-800 hover:bg-slate-700 border border-amber-400/30 rounded-xl transition-colors"
+                  >
+                    Create Client
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSetDeliverables}
+                    className="px-5 py-2.5 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors shadow-lg shadow-amber-400/20"
+                  >
+                    Set Deliverables
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </form>

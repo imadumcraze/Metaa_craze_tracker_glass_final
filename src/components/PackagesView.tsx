@@ -144,10 +144,12 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
                   <h3 className="font-bold text-lg text-white">
                     {client?.name || 'Unknown Client'}
                   </h3>
+                  {client?.companyName && (
                   <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
                     <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{client?.companyName}</span>
+                    <span>{client.companyName}</span>
                   </div>
+                  )}
 
                   {/* Deliverables Breakdown Box */}
                   <div className="mt-4 p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-3">

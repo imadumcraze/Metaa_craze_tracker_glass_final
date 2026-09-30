@@ -576,9 +576,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {client.name}
                         </h3>
                       </div>
-                      <p className="text-xs text-slate-400 mt-1 truncate">
-                        {client.companyName} • Contact: {client.contactPerson}
-                      </p>
+                      {[client.companyName, client.contactPerson ? `Contact: ${client.contactPerson}` : ''].some(Boolean) && (
+                        <p className="text-xs text-slate-400 mt-1 truncate">
+                          {[client.companyName, client.contactPerson ? `Contact: ${client.contactPerson}` : '']
+                            .filter(Boolean)
+                            .join(' • ')}
+                        </p>
+                      )}
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-[11px] text-slate-400 bg-slate-950/60 px-2 py-0.5 rounded border border-slate-800">
                           Fee: {client.monthlyPackageFee || 'Standard'}

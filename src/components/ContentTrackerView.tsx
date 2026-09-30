@@ -322,9 +322,11 @@ export const ContentTrackerView: React.FC<ContentTrackerViewProps> = ({
                       {client.clientId}
                     </span>
                     <h2 className="font-bold text-white text-base">{client.name}</h2>
+                    {client.companyName && (
                     <span className="text-xs text-slate-400 hidden sm:inline">
                       ({client.companyName})
                     </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3 text-xs">

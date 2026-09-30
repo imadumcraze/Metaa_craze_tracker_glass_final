@@ -18,7 +18,7 @@ export const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
   'Other': 'Other'
 };
 
-const initialClients: Client[] = [
+export const initialClients: Client[] = [
   {
     id: 'client-1',
     clientId: 'MC-CL-001',
@@ -27,9 +27,8 @@ const initialClients: Client[] = [
     contactPerson: 'Dinesh Perera',
     contactNumber: '+94 77 123 4567',
     email: 'dinesh@apexapparel.lk',
-    monthlyPackageFee: '$750 / Month',
+    monthlyPackageFee: 'LKR 150,000 / Month',
     status: 'Active',
-    accessCode: 'MC-APEX-78',
     notes: 'Premium formal & casual menswear brand. Requires high aesthetic standards and clean typography.',
     createdAt: '2026-08-01T09:00:00Z',
     defaultGraphicPostQty: 5,
@@ -45,9 +44,8 @@ const initialClients: Client[] = [
     contactPerson: 'Amara Wickramasinghe',
     contactNumber: '+94 71 889 2233',
     email: 'marketing@cinnamonbayresort.com',
-    monthlyPackageFee: '$1,200 / Month',
+    monthlyPackageFee: 'LKR 250,000 / Month',
     status: 'Active',
-    accessCode: 'MC-CBAY-42',
     notes: 'Luxury boutique beachfront villas in Mirissa. Drone footage and sunset specials prioritized.',
     createdAt: '2026-07-15T11:30:00Z',
     defaultGraphicPostQty: 8,
@@ -63,9 +61,8 @@ const initialClients: Client[] = [
     contactPerson: 'Kavinda Silva',
     contactNumber: '+94 76 554 9900',
     email: 'kavinda@urbancrust.lk',
-    monthlyPackageFee: '$600 / Month',
+    monthlyPackageFee: 'LKR 120,000 / Month',
     status: 'Active',
-    accessCode: 'MC-URBN-91',
     notes: 'Artisan sourdough pizza chain with 3 Colombo branches. Heavy focus on weekend food reels.',
     createdAt: '2026-08-20T14:15:00Z',
     defaultGraphicPostQty: 6,
@@ -81,9 +78,8 @@ const initialClients: Client[] = [
     contactPerson: 'Shenal Fernando',
     contactNumber: '+94 70 334 1122',
     email: 'shenal@pulsefitness.lk',
-    monthlyPackageFee: '$850 / Month',
+    monthlyPackageFee: 'LKR 175,000 / Month',
     status: 'Active',
-    accessCode: 'MC-PULS-65',
     notes: 'Elite gym and personal training studio. Emphasize trainer tips and transformation reels.',
     createdAt: '2026-09-01T10:00:00Z',
     defaultGraphicPostQty: 4,
@@ -99,9 +95,8 @@ const initialClients: Client[] = [
     contactPerson: 'M. Rizwan',
     contactNumber: '+94 77 990 0112',
     email: 'rizwan@oldtownheritage.com',
-    monthlyPackageFee: '$500 / Month',
+    monthlyPackageFee: 'LKR 100,000 / Month',
     status: 'Inactive',
-    accessCode: 'MC-OLDT-33',
     notes: 'Paused campaigns for store renovation during Q4 2026.',
     createdAt: '2026-06-10T08:00:00Z',
     defaultGraphicPostQty: 4,
@@ -111,7 +106,7 @@ const initialClients: Client[] = [
   }
 ];
 
-const initialPackages: MonthlyPackage[] = [
+export const initialPackages: MonthlyPackage[] = [
   // October 2026 (Month 10)
   {
     id: 'pkg-oct-2026-1',
@@ -196,7 +191,7 @@ const initialPackages: MonthlyPackage[] = [
   }
 ];
 
-const initialContent: ContentItem[] = [
+export const initialContent: ContentItem[] = [
   // Apex Apparel (Client 1) - October 2026
   {
     id: 'cnt-101',
@@ -879,9 +874,6 @@ export const resetToInitialData = () => {
 };
 
 const ADMIN_USERS_KEY = 'metaa_craze_admin_users_v1';
-const ADMIN_PASSCODE_KEY = 'metaa_craze_admin_passcode_v1';
-
-export const DEFAULT_ADMIN_PASSCODE = 'MCRAZE-ADMIN-88';
 
 const initialAdminUsers = [
   {
@@ -909,22 +901,6 @@ export const saveAdminUsers = (users: any[]) => {
     localStorage.setItem(ADMIN_USERS_KEY, JSON.stringify(users));
   } catch (e) {
     console.error('Error saving admin users:', e);
-  }
-};
-
-export const getStoredAdminPasscode = (): string => {
-  try {
-    return localStorage.getItem(ADMIN_PASSCODE_KEY) || DEFAULT_ADMIN_PASSCODE;
-  } catch (e) {
-    return DEFAULT_ADMIN_PASSCODE;
-  }
-};
-
-export const saveAdminPasscode = (code: string): void => {
-  try {
-    localStorage.setItem(ADMIN_PASSCODE_KEY, code);
-  } catch (e) {
-    console.error('Error saving admin passcode:', e);
   }
 };
 

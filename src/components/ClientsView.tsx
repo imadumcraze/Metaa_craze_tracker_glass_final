@@ -9,7 +9,7 @@ import {
   User,
   Phone,
   Mail,
-  DollarSign,
+  Banknote,
   Edit2,
   Power,
   ChevronRight,
@@ -61,7 +61,6 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     const url = new URL(window.location.href);
     url.searchParams.set('role', 'client');
     url.searchParams.set('client', client.id);
-    if (client.accessCode) url.searchParams.set('code', client.accessCode);
     navigator.clipboard.writeText(url.toString());
     setCopiedId(client.id);
     setTimeout(() => setCopiedId(null), 2500);
@@ -71,9 +70,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     const matchesStatus = statusFilter === 'All' ? true : c.status === statusFilter;
     const matchesSearch =
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.clientId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.contactPerson || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.email.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
@@ -185,17 +184,21 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <h3 className="font-bold text-lg text-white group-hover:text-amber-400 transition-colors">
                     {client.name}
                   </h3>
+                  {client.companyName && (
                   <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
                     <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                     <span className="truncate">{client.companyName}</span>
                   </div>
+                  )}
 
                   {/* Contact Info */}
                   <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-2 text-xs">
+                    {client.contactPerson && (
                     <div className="flex items-center gap-2 text-slate-300">
                       <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                       <span>{client.contactPerson}</span>
                     </div>
+                    )}
                     {client.contactNumber && (
                       <div className="flex items-center gap-2 text-slate-400">
                         <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -209,7 +212,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-amber-400 font-semibold">
-                      <DollarSign className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <Banknote className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                       <span>{client.monthlyPackageFee || 'Fee not specified'}</span>
                     </div>
                   </div>
@@ -339,10 +342,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 <span className="text-slate-400">Client:</span>
                 <span className="font-bold text-white">{clientToDelete.name}</span>
               </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400">Company:</span>
-                <span className="text-slate-200">{clientToDelete.companyName}</span>
-              </div>
+              {clientToDelete.companyName && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400">Company:</span>
+                  <span className="text-slate-200">{clientToDelete.companyName}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-400">Client ID:</span>
                 <span className="font-mono text-amber-400">{clientToDelete.clientId}</span>

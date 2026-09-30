@@ -21,9 +21,28 @@ import {
   isContentOverdue,
   getStoredAccessSession,
   saveAccessSession,
-  getStoredAdminPasscode,
-  DEFAULT_ADMIN_PASSCODE
+  initialClients,
+  initialPackages,
+  initialContent
 } from './lib/storage';
+import { isAdminEmail, IS_LOCAL_DEV } from './lib/adminConfig';
+import { subscribeToAuthUser, googleSignIn } from './lib/firebaseAuth';
+import {
+  subscribeToClients,
+  subscribeToPackages,
+  subscribeToContent,
+  saveClientToFirestore,
+  deleteClientFromFirestore,
+  savePackageToFirestore,
+  deletePackageFromFirestore,
+  saveContentItemToFirestore,
+  saveContentItemsBatch,
+  deleteContentItemFromFirestore,
+  migrateLocalDataToFirestore,
+  resetFirestoreData
+} from './lib/firestoreService';
+import { User } from 'firebase/auth';
+import { Cloud, CloudOff, RefreshCw, AlertCircle } from 'lucide-react';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { DashboardView } from './components/DashboardView';
@@ -44,10 +63,18 @@ export default function App() {
   const [packages, setPackages] = useState<MonthlyPackage[]>([]);
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
 
+  // Firebase Auth & Cloud Firestore Sync State
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'connected' | 'offline' | 'syncing' | 'error'>('offline');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [isFirestoreLoading, setIsFirestoreLoading] = useState<boolean>(true);
+
   // Access Category State (3 Categories: 'admin' | 'viewer' | 'client')
-  const [userRole, setUserRole] = useState<UserRole>('admin');
+  const [userRole, setUserRole] = useState<UserRole>(IS_LOCAL_DEV ? 'admin' : 'viewer');
   const [clientAccessId, setClientAccessId] = useState<string | undefined>(undefined);
   const [isAccessModalOpen, setIsAccessModalOpen] = useState<boolean>(false);
+
+  const isAuthorizedAdmin = IS_LOCAL_DEV || isAdminEmail(currentUser?.email);
 
   // Month & Year Filter (defaults to October 2026 for production view)
   const [selectedMonth, setSelectedMonth] = useState<number>(10);
@@ -65,6 +92,7 @@ export default function App() {
 
   const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
   const [packageToEdit, setPackageToEdit] = useState<MonthlyPackage | null>(null);
+  const [packageModalDefaultClientId, setPackageModalDefaultClientId] = useState<string | undefined>();
 
   const [isContentModalOpen, setIsContentModalOpen] = useState(false);
   const [contentToEdit, setContentToEdit] = useState<ContentItem | null>(null);
@@ -81,26 +109,24 @@ export default function App() {
     }, 3500);
   };
 
-  // Load initial data and access session
+  // Load initial data, access session, and subscribe to Firebase Auth + Firestore
   useEffect(() => {
-    const loadedClients = getStoredClients();
-    setClients(loadedClients);
-    setPackages(getStoredPackages());
-    setContentItems(getStoredContent());
+    // 1. Initial cached / offline load from localStorage
+    const localClients = getStoredClients();
+    const localPackages = getStoredPackages();
+    const localContent = getStoredContent();
+    setClients(localClients);
+    setPackages(localPackages);
+    setContentItems(localContent);
 
-    // Check URL parameters for direct client portal access or admin/viewer links
+    // 2. Check URL parameters for direct client portal access or admin/viewer links
     const params = new URLSearchParams(window.location.search);
     const roleParam = params.get('role') as UserRole;
     const clientParam = params.get('client');
-    const keyParam = params.get('key');
 
     if (roleParam === 'admin') {
-      const currentCode = getStoredAdminPasscode();
-      if (!keyParam || keyParam === currentCode || keyParam === DEFAULT_ADMIN_PASSCODE) {
-        setUserRole('admin');
-        setClientAccessId(undefined);
-        saveAccessSession({ role: 'admin' });
-      }
+      setUserRole(IS_LOCAL_DEV ? 'admin' : 'viewer');
+      setClientAccessId(undefined);
     } else if (roleParam === 'client' && clientParam) {
       setUserRole('client');
       setClientAccessId(clientParam);
@@ -110,29 +136,133 @@ export default function App() {
       saveAccessSession({ role: 'viewer' });
     } else {
       const savedSession = getStoredAccessSession();
-      setUserRole(savedSession.role || 'admin');
+      const restoredRole = savedSession.role === 'admin' ? undefined : savedSession.role;
+      setUserRole(restoredRole || (IS_LOCAL_DEV ? 'admin' : 'viewer'));
       setClientAccessId(savedSession.clientId);
     }
+
+    // 3. Subscribe to Firebase Auth and Cloud Firestore Realtime Updates
+    let unsubClients: (() => void) | null = null;
+    let unsubPackages: (() => void) | null = null;
+    let unsubContent: (() => void) | null = null;
+
+    const unsubAuth = subscribeToAuthUser(async (user) => {
+      setCurrentUser(user);
+      const urlRoleParam = new URLSearchParams(window.location.search).get('role');
+      if (isAdminEmail(user?.email) && !urlRoleParam) {
+        setUserRole('admin');
+        setClientAccessId(undefined);
+      } else {
+        if (!IS_LOCAL_DEV) {
+          setUserRole((prev) => (prev === 'admin' ? 'viewer' : prev));
+        }
+        if (user && !isAdminEmail(user.email)) {
+          showToast(`Signed in as ${user.email}. This account is not an admin, so access is view-only.`);
+        }
+      }
+      if (user) {
+        setSyncStatus('syncing');
+        setIsFirestoreLoading(true);
+        setSyncError(null);
+
+        try {
+          // Perform one-time migration if needed
+          const currentLocalClients = getStoredClients();
+          const currentLocalPackages = getStoredPackages();
+          const currentLocalContent = getStoredContent();
+
+          const migResult = await migrateLocalDataToFirestore(
+            currentLocalClients,
+            currentLocalPackages,
+            currentLocalContent
+          );
+          if (migResult.migrated) {
+            showToast(`Migrated ${migResult.clientCount} clients & deliverables to Cloud Firestore!`);
+          }
+
+          // Realtime listeners
+          unsubClients = subscribeToClients(
+            (remoteClients) => {
+              setClients(remoteClients);
+              saveClients(remoteClients);
+              setIsFirestoreLoading(false);
+              setSyncStatus('connected');
+            },
+            (err) => {
+              console.error('Clients Firestore error:', err);
+              setSyncStatus('error');
+              setSyncError('Firestore permission or network error reading clients.');
+              setIsFirestoreLoading(false);
+            }
+          );
+
+          unsubPackages = subscribeToPackages(
+            (remotePackages) => {
+              setPackages(remotePackages);
+              savePackages(remotePackages);
+              setIsFirestoreLoading(false);
+              setSyncStatus('connected');
+            },
+            (err) => {
+              console.error('Packages Firestore error:', err);
+              setSyncStatus('error');
+              setSyncError('Firestore permission or network error reading packages.');
+              setIsFirestoreLoading(false);
+            }
+          );
+
+          unsubContent = subscribeToContent(
+            (remoteContent) => {
+              setContentItems(remoteContent);
+              saveContent(remoteContent);
+              setIsFirestoreLoading(false);
+              setSyncStatus('connected');
+            },
+            (err) => {
+              console.error('Content Firestore error:', err);
+              setSyncStatus('error');
+              setSyncError('Firestore permission or network error reading content.');
+              setIsFirestoreLoading(false);
+            }
+          );
+        } catch (err: any) {
+          console.error('Firestore init error:', err);
+          setSyncStatus('error');
+          setSyncError(err.message || 'Error connecting to Cloud Firestore');
+          setIsFirestoreLoading(false);
+        }
+      } else {
+        setSyncStatus('offline');
+        setIsFirestoreLoading(false);
+        if (unsubClients) unsubClients();
+        if (unsubPackages) unsubPackages();
+        if (unsubContent) unsubContent();
+      }
+    });
+
+    return () => {
+      unsubAuth();
+      if (unsubClients) unsubClients();
+      if (unsubPackages) unsubPackages();
+      if (unsubContent) unsubContent();
+    };
   }, []);
 
-  // Save changes to storage
-  const updateClients = (newClients: Client[]) => {
-    setClients(newClients);
-    saveClients(newClients);
-  };
-
-  const updatePackages = (newPackages: MonthlyPackage[]) => {
-    setPackages(newPackages);
-    savePackages(newPackages);
-  };
-
-  const updateContentItems = (newItems: ContentItem[]) => {
-    setContentItems(newItems);
-    saveContent(newItems);
+  const handleQuickSignIn = async () => {
+    try {
+      await googleSignIn();
+    } catch (err: any) {
+      console.error('Google Sign In error:', err);
+      showToast(`Sign in error: ${err.message || 'Authentication cancelled'}`);
+    }
   };
 
   // Handle switching between the 3 access roles
   const handleSelectRole = (newRole: UserRole, targetClientId?: string) => {
+    if (newRole === 'admin' && !isAuthorizedAdmin) {
+      showToast('Admin access needs a Google sign-in with an approved admin account.');
+      return;
+    }
     setUserRole(newRole);
     setClientAccessId(targetClientId);
     saveAccessSession({ role: newRole, clientId: targetClientId });
@@ -163,13 +293,24 @@ export default function App() {
   };
 
   // Reset to initial sample data
-  const handleResetData = () => {
+  const handleResetData = async () => {
     if (window.confirm('Reset all data to sample Metaa Craze client campaigns?')) {
       resetToInitialData();
-      setClients(getStoredClients());
-      setPackages(getStoredPackages());
-      setContentItems(getStoredContent());
-      showToast('Data reset to default sample records.');
+      setClients(initialClients);
+      setPackages(initialPackages);
+      setContentItems(initialContent);
+
+      if (currentUser) {
+        try {
+          await resetFirestoreData(initialClients, initialPackages, initialContent);
+          showToast('Cloud database reset to default Metaa Craze client campaigns.');
+        } catch (err: any) {
+          console.error('Failed to reset Firestore:', err);
+          showToast(`Error resetting database: ${err.message}`);
+        }
+      } else {
+        showToast('Data reset to default sample records.');
+      }
     }
   };
 
@@ -190,17 +331,25 @@ export default function App() {
   };
 
   // Client Handlers
-  const handleSaveClient = (client: Client, packageData?: InitialPackageData) => {
+  const handleSaveClient = async (client: Client, packageData?: InitialPackageData) => {
     const exists = clients.some(c => c.id === client.id);
-    let updatedClients: Client[];
-    if (exists) {
-      updatedClients = clients.map(c => (c.id === client.id ? client : c));
-      showToast(`Client "${client.name}" updated successfully.`);
+    const updatedClients = exists
+      ? clients.map(c => (c.id === client.id ? client : c))
+      : [client, ...clients];
+    setClients(updatedClients);
+    saveClients(updatedClients);
+
+    if (currentUser) {
+      try {
+        await saveClientToFirestore(client);
+        showToast(`Client "${client.name}" saved to Cloud Firestore.`);
+      } catch (err: any) {
+        console.error('Failed to save client to Firestore:', err);
+        showToast(`Error saving client to cloud: ${err.message}`);
+      }
     } else {
-      updatedClients = [client, ...clients];
-      showToast(`Client "${client.name}" created successfully.`);
+      showToast(`Client "${client.name}" saved locally. Sign in with Google to sync.`);
     }
-    updateClients(updatedClients);
 
     // If initial package data was provided when adding client:
     if (packageData && packageData.createPackageNow) {
@@ -234,13 +383,19 @@ export default function App() {
         const existingPkgIndex = packages.findIndex(
           p => p.clientId === client.id && p.month === packageData.month && p.year === packageData.year
         );
-        let updatedPackages: MonthlyPackage[];
-        if (existingPkgIndex >= 0) {
-          updatedPackages = packages.map((p, idx) => (idx === existingPkgIndex ? newPkg : p));
-        } else {
-          updatedPackages = [newPkg, ...packages];
+        const updatedPackages = existingPkgIndex >= 0
+          ? packages.map((p, idx) => (idx === existingPkgIndex ? newPkg : p))
+          : [newPkg, ...packages];
+        setPackages(updatedPackages);
+        savePackages(updatedPackages);
+
+        if (currentUser) {
+          try {
+            await savePackageToFirestore(newPkg);
+          } catch (err: any) {
+            console.error('Failed to save package to Firestore:', err);
+          }
         }
-        updatePackages(updatedPackages);
 
         // Auto-generate content items if requested
         if (packageData.autoGenerateContent) {
@@ -279,28 +434,58 @@ export default function App() {
           createItems('Other', packageData.otherQty);
 
           if (newItems.length > 0) {
-            updateContentItems([...contentItems, ...newItems]);
-            showToast(`Created ${client.name} with ${totalDeliverables} deliverables in content tracker!`);
+            const allContent = [...contentItems, ...newItems];
+            setContentItems(allContent);
+            saveContent(allContent);
+
+            if (currentUser) {
+              try {
+                await saveContentItemsBatch(newItems);
+                showToast(`Created ${client.name} with ${totalDeliverables} deliverables in Cloud Firestore!`);
+              } catch (err: any) {
+                console.error('Failed to batch save content:', err);
+                showToast(`Created locally, error syncing to cloud: ${err.message}`);
+              }
+            } else {
+              showToast(`Created ${client.name} with ${totalDeliverables} deliverables locally.`);
+            }
           }
         }
       }
     }
   };
 
-  const handleToggleClientStatus = (clientId: string) => {
-    if (userRole !== 'admin') return;
-    const updated = clients.map(c => {
-      if (c.id === clientId) {
-        const nextStatus = c.status === 'Active' ? 'Inactive' : 'Active';
-        showToast(`${c.name} is now ${nextStatus}.`);
-        return { ...c, status: nextStatus as 'Active' | 'Inactive' };
-      }
-      return c;
-    });
-    updateClients(updated);
+  const handleSaveClientAndSetDeliverables = (client: Client) => {
+    handleSaveClient(client);
+    setActiveTab('packages');
+    setPackageToEdit(null);
+    setPackageModalDefaultClientId(client.id);
+    setIsPackageModalOpen(true);
   };
 
-  const handleDeleteClient = (clientId: string) => {
+  const handleToggleClientStatus = async (clientId: string) => {
+    if (userRole !== 'admin') return;
+    const target = clients.find(c => c.id === clientId);
+    if (!target) return;
+    const nextStatus = target.status === 'Active' ? 'Inactive' : 'Active';
+    const updatedClient: Client = { ...target, status: nextStatus as 'Active' | 'Inactive' };
+
+    const updated = clients.map(c => (c.id === clientId ? updatedClient : c));
+    setClients(updated);
+    saveClients(updated);
+    showToast(`${target.name} is now ${nextStatus}.`);
+
+    if (currentUser) {
+      try {
+        await saveClientToFirestore(updatedClient);
+      } catch (err: any) {
+        console.error('Failed to update status in Firestore:', err);
+        showToast(`Error updating cloud status: ${err.message}`);
+      }
+    }
+  };
+
+  const handleDeleteClient = async (clientId: string) => {
     if (userRole !== 'admin') return;
     const client = clients.find(c => c.id === clientId);
     const clientName = client?.name || 'Client';
@@ -309,9 +494,12 @@ export default function App() {
     const updatedPackages = packages.filter(p => p.clientId !== clientId);
     const updatedContent = contentItems.filter(i => i.clientId !== clientId);
 
-    updateClients(updatedClients);
-    updatePackages(updatedPackages);
-    updateContentItems(updatedContent);
+    setClients(updatedClients);
+    saveClients(updatedClients);
+    setPackages(updatedPackages);
+    savePackages(updatedPackages);
+    setContentItems(updatedContent);
+    saveContent(updatedContent);
 
     if (drilldownClientId === clientId) {
       setDrilldownClientId('');
@@ -321,29 +509,45 @@ export default function App() {
       setUserRole('admin');
     }
 
-    showToast(`Client "${clientName}" and all associated deliverables have been deleted.`);
+    if (currentUser) {
+      try {
+        await deleteClientFromFirestore(clientId);
+        showToast(`Client "${clientName}" and associated deliverables deleted from Cloud Firestore.`);
+      } catch (err: any) {
+        console.error('Failed to delete client from Firestore:', err);
+        showToast(`Error deleting client from cloud: ${err.message}`);
+      }
+    } else {
+      showToast(`Client "${clientName}" deleted locally.`);
+    }
   };
 
   // Package Handlers
-  const handleSavePackage = (pkg: MonthlyPackage, autoGenerateItems: boolean) => {
+  const handleSavePackage = async (pkg: MonthlyPackage, autoGenerateItems: boolean) => {
     if (userRole !== 'admin') return;
     const exists = packages.some(p => p.id === pkg.id);
-    let updatedPackages: MonthlyPackage[];
-    if (exists) {
-      updatedPackages = packages.map(p => (p.id === pkg.id ? pkg : p));
-      showToast(`Package ${pkg.packageId} updated.`);
-    } else {
-      updatedPackages = [pkg, ...packages];
-      showToast(`Package ${pkg.packageId} created with ${pkg.totalDeliverables} deliverables.`);
+    const updatedPackages = exists
+      ? packages.map(p => (p.id === pkg.id ? pkg : p))
+      : [pkg, ...packages];
+    setPackages(updatedPackages);
+    savePackages(updatedPackages);
+    showToast(`Package ${pkg.packageId} ${exists ? 'updated' : 'created'}.`);
+
+    if (currentUser) {
+      try {
+        await savePackageToFirestore(pkg);
+      } catch (err: any) {
+        console.error('Failed to save package in Firestore:', err);
+        showToast(`Error saving package to cloud: ${err.message}`);
+      }
     }
-    updatePackages(updatedPackages);
 
     if (autoGenerateItems) {
-      generateContentItemsForPackage(pkg);
+      await generateContentItemsForPackage(pkg);
     }
   };
 
-  const generateContentItemsForPackage = (pkg: MonthlyPackage) => {
+  const generateContentItemsForPackage = async (pkg: MonthlyPackage) => {
     if (userRole !== 'admin') return;
     const newItems: ContentItem[] = [];
     const client = clients.find(c => c.id === pkg.clientId);
@@ -406,67 +610,115 @@ export default function App() {
     createNumberedItems('Other', Math.max(0, pkg.otherQty - existingOther));
 
     if (newItems.length > 0) {
-      updateContentItems([...contentItems, ...newItems]);
-      showToast(`Generated ${newItems.length} numbered content items for ${client?.name || 'client'}.`);
+      const allItems = [...contentItems, ...newItems];
+      setContentItems(allItems);
+      saveContent(allItems);
+
+      if (currentUser) {
+        try {
+          await saveContentItemsBatch(newItems);
+          showToast(`Generated ${newItems.length} numbered deliverables in Cloud Firestore.`);
+        } catch (err: any) {
+          console.error('Failed to batch save content:', err);
+          showToast(`Generated locally, error syncing to cloud: ${err.message}`);
+        }
+      } else {
+        showToast(`Generated ${newItems.length} numbered content items for ${client?.name || 'client'}.`);
+      }
     } else {
       showToast('All deliverables for this package already have records in the tracker.');
     }
   };
 
   // Content Item Handlers
-  const handleSaveContentItem = (item: ContentItem) => {
+  const handleSaveContentItem = async (item: ContentItem) => {
     if (userRole !== 'admin') return;
     const exists = contentItems.some(i => i.id === item.id);
-    let updated: ContentItem[];
-    if (exists) {
-      updated = contentItems.map(i => (i.id === item.id ? item : i));
-      showToast(`Updated ${item.displayNumber}.`);
-    } else {
-      updated = [item, ...contentItems];
-      showToast(`Created ${item.displayNumber}.`);
+    const updated = exists
+      ? contentItems.map(i => (i.id === item.id ? item : i))
+      : [item, ...contentItems];
+    setContentItems(updated);
+    saveContent(updated);
+    showToast(`${exists ? 'Updated' : 'Created'} ${item.displayNumber}.`);
+
+    if (currentUser) {
+      try {
+        await saveContentItemToFirestore(item);
+      } catch (err: any) {
+        console.error('Failed to save item in Firestore:', err);
+        showToast(`Error saving item to cloud: ${err.message}`);
+      }
     }
-    updateContentItems(updated);
   };
 
-  const handleDeleteContentItem = (itemId: string) => {
+  const handleDeleteContentItem = async (itemId: string) => {
     if (userRole !== 'admin') return;
     const target = contentItems.find(i => i.id === itemId);
     const updated = contentItems.filter(i => i.id !== itemId);
-    updateContentItems(updated);
+    setContentItems(updated);
+    saveContent(updated);
     showToast(`Deleted ${target?.displayNumber || 'item'}.`);
+
+    if (currentUser) {
+      try {
+        await deleteContentItemFromFirestore(itemId);
+      } catch (err: any) {
+        console.error('Failed to delete item from Firestore:', err);
+        showToast(`Error deleting item from cloud: ${err.message}`);
+      }
+    }
   };
 
-  const handleUpdateItemStatus = (itemId: string, newStatus: ContentStatus, actualPublishedDate?: string) => {
+  const handleUpdateItemStatus = async (itemId: string, newStatus: ContentStatus, actualPublishedDate?: string) => {
     if (userRole !== 'admin') return;
-    const updated = contentItems.map(i => {
-      if (i.id === itemId) {
-        return {
-          ...i,
-          status: newStatus,
-          actualPublishedDate: newStatus === 'Published' ? (actualPublishedDate || i.actualPublishedDate || new Date().toISOString().split('T')[0]) : i.actualPublishedDate,
-          updatedAt: new Date().toISOString()
-        };
-      }
-      return i;
-    });
-    updateContentItems(updated);
+    const target = contentItems.find(i => i.id === itemId);
+    if (!target) return;
+    const updatedItem: ContentItem = {
+      ...target,
+      status: newStatus,
+      actualPublishedDate:
+        newStatus === 'Published'
+          ? actualPublishedDate || target.actualPublishedDate || new Date().toISOString().split('T')[0]
+          : target.actualPublishedDate,
+      updatedAt: new Date().toISOString()
+    };
+
+    const updated = contentItems.map(i => (i.id === itemId ? updatedItem : i));
+    setContentItems(updated);
+    saveContent(updated);
     showToast(`Status updated to "${newStatus}".`);
+
+    if (currentUser) {
+      try {
+        await saveContentItemToFirestore(updatedItem);
+      } catch (err: any) {
+        console.error('Failed to update status in Firestore:', err);
+      }
+    }
   };
 
-  const handleUpdatePostUrl = (itemId: string, newUrl: string) => {
+  const handleUpdatePostUrl = async (itemId: string, newUrl: string) => {
     if (userRole !== 'admin') return;
-    const updated = contentItems.map(i => {
-      if (i.id === itemId) {
-        return {
-          ...i,
-          postUrl: newUrl,
-          updatedAt: new Date().toISOString()
-        };
-      }
-      return i;
-    });
-    updateContentItems(updated);
+    const target = contentItems.find(i => i.id === itemId);
+    if (!target) return;
+    const updatedItem: ContentItem = {
+      ...target,
+      postUrl: newUrl,
+      updatedAt: new Date().toISOString()
+    };
+
+    const updated = contentItems.map(i => (i.id === itemId ? updatedItem : i));
+    setContentItems(updated);
+    saveContent(updated);
     showToast('Post URL updated.');
+
+    if (currentUser) {
+      try {
+        await saveContentItemToFirestore(updatedItem);
+      } catch (err: any) {
+        console.error('Failed to update URL in Firestore:', err);
+      }
+    }
   };
 
   // Open Add Content Modal with options
@@ -501,7 +753,6 @@ export default function App() {
   const monthPackages = visiblePackages.filter(
     p => p.month === selectedMonth && p.year === selectedYear
   );
-  const totalDeliverablesCount = monthPackages.reduce((acc, p) => acc + p.totalDeliverables, 0);
 
   const monthItems = visibleContentItems.filter(
     i => i.month === selectedMonth && i.year === selectedYear
@@ -516,10 +767,12 @@ export default function App() {
         selectedYear={selectedYear}
         currentRole={userRole}
         activeClientName={clientTarget?.name}
+        syncStatus={syncStatus}
         onMonthChange={handleMonthChange}
         onOpenNewContentModal={() => handleOpenAddContent()}
         onOpenAccessModal={() => setIsAccessModalOpen(true)}
         onResetData={handleResetData}
+        onGoogleSignInSuccess={handleQuickSignIn}
       />
 
       {/* Main Navigation Tabs */}
@@ -530,15 +783,54 @@ export default function App() {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         activeClientsCount={activeClients.length}
-        totalDeliverablesCount={totalDeliverablesCount}
+        totalProjectsCount={monthPackages.length}
         overdueCount={overdueCount}
         currentRole={userRole}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* If in Client Mode and on dashboard tab, render dedicated ClientPortalView */}
-        {userRole === 'client' && clientTarget && activeTab === 'dashboard' ? (
+        {/* Firestore Sync Alerts & Local Mode Banner */}
+        {!currentUser && (
+          <div className="mb-6 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200">
+            <div className="flex items-center gap-2.5">
+              <CloudOff className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                <strong>Cloud Sync Offline:</strong> You are currently in local mode. Sign in with Google to enable real-time <strong>Cloud Firestore</strong> sync across all your devices and team members.
+              </span>
+            </div>
+            <button
+              onClick={handleQuickSignIn}
+              className="px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-xl text-xs transition-colors shrink-0 self-start sm:self-auto shadow-sm"
+            >
+              Sign in with Google
+            </button>
+          </div>
+        )}
+
+        {syncError && currentUser && (
+          <div className="mb-6 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-3 text-xs text-red-300">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+              <span>Firestore Sync: {syncError}</span>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-xs text-red-400 underline font-semibold hover:text-red-300"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Loading State when initial Firestore data is fetching */}
+        {isFirestoreLoading && currentUser && clients.length === 0 ? (
+          <div className="p-16 text-center space-y-3 bg-slate-900/40 rounded-2xl border border-slate-800">
+            <RefreshCw className="w-8 h-8 text-amber-400 animate-spin mx-auto" />
+            <p className="text-sm font-semibold text-white">Connecting to Cloud Firestore...</p>
+            <p className="text-xs text-slate-400">Loading your shared client campaigns and deliverables</p>
+          </div>
+        ) : userRole === 'client' && clientTarget && activeTab === 'dashboard' ? (
           <ClientPortalView
             client={clientTarget}
             packages={packages}
@@ -547,7 +839,7 @@ export default function App() {
             selectedYear={selectedYear}
             onMonthChange={handleMonthChange}
             onOpenReport={() => setActiveTab('reports')}
-            onExitClientMode={() => handleSelectRole('admin')}
+            onExitClientMode={() => handleSelectRole(isAuthorizedAdmin ? 'admin' : 'viewer')}
           />
         ) : (
           <>
@@ -596,10 +888,12 @@ export default function App() {
                 selectedYear={selectedYear}
                 currentRole={userRole}
                 onAddPackage={() => {
+                  setPackageModalDefaultClientId(undefined);
                   setPackageToEdit(null);
                   setIsPackageModalOpen(true);
                 }}
                 onEditPackage={(pkg) => {
+                  setPackageModalDefaultClientId(undefined);
                   setPackageToEdit(pkg);
                   setIsPackageModalOpen(true);
                 }}
@@ -710,6 +1004,7 @@ export default function App() {
         isOpen={isClientModalOpen}
         onClose={() => setIsClientModalOpen(false)}
         onSave={handleSaveClient}
+        onSaveAndSetDeliverables={handleSaveClientAndSetDeliverables}
         onDelete={handleDeleteClient}
         clientToEdit={clientToEdit}
         existingClientsCount={clients.length}
@@ -726,6 +1021,7 @@ export default function App() {
         defaultMonth={selectedMonth}
         defaultYear={selectedYear}
         existingPackages={packages}
+        defaultClientId={packageModalDefaultClientId}
       />
 
       <ContentItemModal

@@ -13,9 +13,12 @@ import {
   Eye,
   Building,
   KeyRound,
-  Lock
+  Lock,
+  Cloud,
+  CloudOff,
+  RefreshCw
 } from 'lucide-react';
-import { googleSignIn, initAuth, logout } from '../lib/firebaseAuth';
+import { googleSignIn, subscribeToAuthUser, logout } from '../lib/firebaseAuth';
 import { User } from 'firebase/auth';
 
 interface HeaderProps {
@@ -23,10 +26,12 @@ interface HeaderProps {
   selectedYear: number;
   currentRole: UserRole;
   activeClientName?: string;
+  syncStatus?: 'connected' | 'offline' | 'syncing' | 'error';
   onMonthChange: (month: number, year: number) => void;
   onOpenNewContentModal: () => void;
   onOpenAccessModal: () => void;
   onResetData: () => void;
+  onGoogleSignInSuccess?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,23 +39,20 @@ export const Header: React.FC<HeaderProps> = ({
   selectedYear,
   currentRole,
   activeClientName,
+  syncStatus = 'offline',
   onMonthChange,
   onOpenNewContentModal,
   onOpenAccessModal,
-  onResetData
+  onResetData,
+  onGoogleSignInSuccess
 }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = initAuth(
-      (user) => {
-        setCurrentUser(user);
-      },
-      () => {
-        setCurrentUser(null);
-      }
-    );
+    const unsubscribe = subscribeToAuthUser((user) => {
+      setCurrentUser(user);
+    });
     return () => unsubscribe();
   }, []);
 
@@ -78,6 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
     try {
       setIsSigningIn(true);
       await googleSignIn();
+      if (onGoogleSignInSuccess) onGoogleSignInSuccess();
     } catch (err) {
       console.error('Google Sign In failed:', err);
     } finally {
@@ -206,15 +209,18 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            {/* Google Sheets Connection (hidden in client mode) */}
+            {/* Google Sheets & Cloud Connection (hidden in client mode) */}
             {currentRole !== 'client' && (
               currentUser ? (
                 <div className="hidden lg:flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-2.5 py-1.5 text-xs text-emerald-400">
-                  <Sheet className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="font-medium">Sheets Connected</span>
+                  <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="font-semibold">Cloud Synced</span>
+                  <span className="text-slate-600">•</span>
+                  <Sheet className="w-3 h-3 text-emerald-400" />
+                  <span className="font-medium text-emerald-300">Sheets</span>
                   <button
                     onClick={handleLogout}
-                    title="Disconnect Google Sheets"
+                    title="Sign Out of Google"
                     className="text-slate-400 hover:text-red-400 ml-1 p-0.5"
                   >
                     <LogOut className="w-3 h-3" />
@@ -225,7 +231,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onClick={handleGoogleLogin}
                   disabled={isSigningIn}
                   className="gsi-material-button hidden md:inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl transition-all shadow-sm"
-                  title="Connect Google Sheets to export client reports"
+                  title="Sign in with Google to sync with Cloud Firestore and export client reports"
                 >
                   <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 48 48">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -234,7 +240,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
                   </svg>
                   <span>
-                    {isSigningIn ? 'Connecting...' : 'Connect Sheets'}
+                    {isSigningIn ? 'Connecting...' : 'Connect & Sync'}
                   </span>
                 </button>
               )

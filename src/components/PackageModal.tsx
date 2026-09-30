@@ -12,6 +12,7 @@ interface PackageModalProps {
   defaultMonth: number;
   defaultYear: number;
   existingPackages: MonthlyPackage[];
+  defaultClientId?: string;
 }
 
 export const PackageModal: React.FC<PackageModalProps> = ({
@@ -22,7 +23,8 @@ export const PackageModal: React.FC<PackageModalProps> = ({
   clients,
   defaultMonth,
   defaultYear,
-  existingPackages
+  existingPackages,
+  defaultClientId
 }) => {
   const [clientId, setClientId] = useState('');
   const [packageId, setPackageId] = useState('');
@@ -61,8 +63,11 @@ export const PackageModal: React.FC<PackageModalProps> = ({
       setNotes(packageToEdit.notes || '');
       setAutoGenerate(false); // don't auto generate when editing
     } else {
+      const matchedClient = defaultClientId && clients.some(c => c.id === defaultClientId);
       const activeClients = clients.filter(c => c.status === 'Active');
-      const defaultClient = activeClients.length > 0 ? activeClients[0].id : '';
+      const defaultClient = matchedClient
+        ? defaultClientId
+        : (activeClients.length > 0 ? activeClients[0].id : '');
       setClientId(defaultClient);
       const randCode = Math.floor(100 + Math.random() * 900);
       setPackageId(`PKG-${defaultYear}${defaultMonth < 10 ? '0' + defaultMonth : defaultMonth}-${randCode}`);
@@ -78,7 +83,7 @@ export const PackageModal: React.FC<PackageModalProps> = ({
       setAutoGenerate(true);
     }
     setError('');
-  }, [packageToEdit, clients, defaultMonth, defaultYear, isOpen]);
+  }, [packageToEdit, clients, defaultMonth, defaultYear, isOpen, defaultClientId]);
 
   if (!isOpen) return null;
 
@@ -165,7 +170,7 @@ export const PackageModal: React.FC<PackageModalProps> = ({
                 <option value="">Select a client...</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} ({c.companyName}) {c.status === 'Inactive' ? '[Inactive]' : ''}
+                    {c.companyName ? `${c.name} (${c.companyName})` : c.name} {c.status === 'Inactive' ? '[Inactive]' : ''}
                   </option>
                 ))}
               </select>

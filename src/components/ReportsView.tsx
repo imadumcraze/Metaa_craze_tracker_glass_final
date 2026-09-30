@@ -150,7 +150,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
     const csvContent = [
       `"METAA CRAZE PRODUCTIONS (PVT) LTD - CLIENT DELIVERY REPORT"`,
-      `"Client: ${selectedClient.name} (${selectedClient.companyName})"`,
+      `"Client: ${selectedClient.name}${selectedClient.companyName ? ` (${selectedClient.companyName})` : ''}"`,
       `"Period: ${monthName} ${reportYear}"`,
       `"Total Agreed: ${totalAgreed}"`,
       `"Published: ${publishedCount}"`,
@@ -307,7 +307,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   .filter(c => (restrictedClientId ? c.id === restrictedClientId : true))
                   .map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.name} ({c.companyName})
+                      {c.companyName ? `${c.name} (${c.companyName})` : c.name}
                     </option>
                   ))}
               </select>
@@ -425,7 +425,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <div>
               <span className="text-slate-500 uppercase font-semibold block text-[10px]">Client</span>
               <span className="text-sm font-bold text-slate-900 block">{selectedClient?.name}</span>
-              <span className="text-slate-600 block">{selectedClient?.companyName}</span>
+              {selectedClient?.companyName && (
+                <span className="text-slate-600 block">{selectedClient.companyName}</span>
+              )}
             </div>
 
             <div>
@@ -436,7 +438,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
             <div>
               <span className="text-slate-500 uppercase font-semibold block text-[10px]">Contact Person</span>
-              <span className="text-sm font-bold text-slate-900 block">{selectedClient?.contactPerson}</span>
+              <span className="text-sm font-bold text-slate-900 block">{selectedClient?.contactPerson || '—'}</span>
               <span className="text-slate-600 block">{selectedClient?.email || selectedClient?.contactNumber}</span>
             </div>
 

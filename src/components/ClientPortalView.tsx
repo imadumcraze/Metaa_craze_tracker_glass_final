@@ -97,7 +97,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
               {client.name}
             </h1>
             <p className="text-sm text-slate-400 mt-1">
-              {client.companyName} • Managed by <strong>Metaa Craze Productions (Pvt) Ltd.</strong>
+              {client.companyName ? `${client.companyName} • ` : ''}Managed by <strong>Metaa Craze Productions (Pvt) Ltd.</strong>
             </p>
             <p className="text-xs text-emerald-300/90 mt-2 flex items-center gap-1.5">
               <Lock className="w-3.5 h-3.5" />

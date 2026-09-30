@@ -28,8 +28,6 @@ export interface Client {
   status: ClientStatus;
   notes: string;
   createdAt: string;
-  // Client portal private access code
-  accessCode?: string;
   // Standard monthly deliverables agreed for this client
   defaultGraphicPostQty?: number;
   defaultVideoQty?: number;

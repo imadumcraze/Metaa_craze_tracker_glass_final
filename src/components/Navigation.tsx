@@ -13,7 +13,7 @@ interface NavigationProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
   activeClientsCount: number;
-  totalDeliverablesCount: number;
+  totalProjectsCount: number;
   overdueCount: number;
   currentRole?: UserRole;
 }
@@ -22,7 +22,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   activeTab,
   onTabChange,
   activeClientsCount,
-  totalDeliverablesCount,
+  totalProjectsCount,
   overdueCount,
   currentRole = 'admin'
 }) => {
@@ -45,7 +45,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       id: 'packages' as TabType,
       label: 'Monthly Packages',
       icon: Package,
-      badge: `${totalDeliverablesCount} items`,
+      badge: `${totalProjectsCount} ${totalProjectsCount === 1 ? 'project' : 'projects'}`,
       visibleForClient: false
     },
     {

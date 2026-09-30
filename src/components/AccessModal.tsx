@@ -1,12 +1,6 @@
 import React, { useState } from 'react';
-import { UserRole, Client, AdminUser } from '../types';
-import {
-  getStoredAdminUsers,
-  saveAdminUsers,
-  getStoredAdminPasscode,
-  saveAdminPasscode,
-  DEFAULT_ADMIN_PASSCODE
-} from '../lib/storage';
+import { UserRole, Client } from '../types';
+import { ADMIN_EMAILS } from '../lib/adminConfig';
 import {
   ShieldCheck,
   Eye,
@@ -15,15 +9,7 @@ import {
   X,
   Check,
   Copy,
-  ExternalLink,
-  Lock,
-  ArrowRight,
-  ShieldAlert,
-  UserPlus,
-  Users,
-  Link as LinkIcon,
-  Sparkles,
-  HelpCircle
+  Lock
 } from 'lucide-react';
 
 interface AccessModalProps {
@@ -49,18 +35,6 @@ export const AccessModal: React.FC<AccessModalProps> = ({
     currentClientId || (clients.length > 0 ? clients[0].id : '')
   );
 
-  // Admin passcode management
-  const [adminPasscode, setAdminPasscode] = useState(getStoredAdminPasscode());
-  const [isEditingPasscode, setIsEditingPasscode] = useState(false);
-  const [passcodeDraft, setPasscodeDraft] = useState(adminPasscode);
-
-  // Admin team roster
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(getStoredAdminUsers());
-  const [newAdminName, setNewAdminName] = useState('');
-  const [newAdminEmail, setNewAdminEmail] = useState('');
-  const [newAdminTitle, setNewAdminTitle] = useState('Director');
-  const [showAddAdminForm, setShowAddAdminForm] = useState(false);
-
   // Copy feedback states
   const [copiedType, setCopiedType] = useState<string | null>(null);
 
@@ -73,15 +47,6 @@ export const AccessModal: React.FC<AccessModalProps> = ({
       onSelectRole(selectedRole, undefined);
     }
     onClose();
-  };
-
-  const handleCopyAdminLink = () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('role', 'admin');
-    url.searchParams.set('key', adminPasscode);
-    navigator.clipboard.writeText(url.toString());
-    setCopiedType('admin');
-    setTimeout(() => setCopiedType(null), 2500);
   };
 
   const handleCopyViewerLink = () => {
@@ -98,40 +63,9 @@ export const AccessModal: React.FC<AccessModalProps> = ({
     const url = new URL(window.location.href);
     url.searchParams.set('role', 'client');
     url.searchParams.set('client', client.id);
-    if (client.accessCode) {
-      url.searchParams.set('code', client.accessCode);
-    }
     navigator.clipboard.writeText(url.toString());
     setCopiedType(`client-${client.id}`);
     setTimeout(() => setCopiedType(null), 2500);
-  };
-
-  const handleSaveNewPasscode = () => {
-    if (!passcodeDraft.trim()) return;
-    const cleanCode = passcodeDraft.trim();
-    setAdminPasscode(cleanCode);
-    saveAdminPasscode(cleanCode);
-    setIsEditingPasscode(false);
-  };
-
-  const handleAddAdminUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAdminName.trim() || !newAdminEmail.trim()) return;
-
-    const newUser: AdminUser = {
-      id: `admin-${Date.now()}`,
-      name: newAdminName.trim(),
-      email: newAdminEmail.trim(),
-      roleTitle: newAdminTitle.trim() || 'Director',
-      addedAt: new Date().toISOString()
-    };
-
-    const updated = [...adminUsers, newUser];
-    setAdminUsers(updated);
-    saveAdminUsers(updated);
-    setNewAdminName('');
-    setNewAdminEmail('');
-    setShowAddAdminForm(false);
   };
 
   return (
@@ -146,7 +80,7 @@ export const AccessModal: React.FC<AccessModalProps> = ({
             <div>
               <h2 className="text-lg font-bold text-white">Access Category & Role Manager</h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Switch permissions, invite new admins, and share client portal links
+                Switch views, see approved admins, and share client portal links
               </p>
             </div>
           </div>
@@ -313,7 +247,7 @@ export const AccessModal: React.FC<AccessModalProps> = ({
                   >
                     {clients.map(c => (
                       <option key={c.id} value={c.id}>
-                        {c.name} ({c.companyName}) — Code: {c.accessCode || 'MC-ACCESS'}
+                        {c.companyName ? `${c.name} (${c.companyName})` : c.name}
                       </option>
                     ))}
                   </select>
@@ -331,187 +265,28 @@ export const AccessModal: React.FC<AccessModalProps> = ({
           {/* ========================================================= */}
           {activeTab === 'grantAdmin' && (
             <div className="space-y-6">
-              {/* Introduction Banner */}
               <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent border border-amber-400/30">
                 <h3 className="font-bold text-sm text-amber-300 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-amber-400" />
-                  <span>How to Grant Admin Access to Another Person</span>
+                  <span>How Admin Access Works</span>
                 </h3>
                 <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                  You can give full Admin (Management) access to another director, manager, or partner using either of the two easy methods below:
+                  Admin access is tied to approved Google accounts. Admins sign in with Google and are recognised automatically. There are no shared passcodes or invitation links. To add or remove an admin, the approved email list in src/lib/adminConfig.ts and firestore.rules must be updated.
                 </p>
               </div>
 
-              {/* Method 1: Shareable Admin Link */}
-              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-                      Method 1: Direct Admin Invitation Link (Fastest)
-                    </span>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Send this link to your co-director or manager via WhatsApp or email. Opening it immediately grants Admin access.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${window.location.origin}${window.location.pathname}?role=admin&key=${adminPasscode}`}
-                    className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono focus:outline-none"
-                  />
-                  <button
-                    onClick={handleCopyAdminLink}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
-                      copiedType === 'admin'
-                        ? 'bg-emerald-500 text-slate-950'
-                        : 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md shadow-amber-400/20'
-                    }`}
-                  >
-                    {copiedType === 'admin' ? (
-                      <>
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Admin Link</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Method 2: Admin Security Passcode */}
-              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-                    Method 2: Admin Security Passcode
-                  </span>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Share this passcode with management. Anyone using the app on any device can enter it to unlock Admin access.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {isEditingPasscode ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <input
-                        type="text"
-                        value={passcodeDraft}
-                        onChange={(e) => setPasscodeDraft(e.target.value)}
-                        className="bg-slate-900 border border-amber-500 rounded-xl px-3 py-1.5 text-sm text-white font-mono uppercase focus:outline-none"
-                        placeholder="ENTER-NEW-CODE"
-                      />
-                      <button
-                        onClick={handleSaveNewPasscode}
-                        className="px-3 py-1.5 bg-amber-400 text-slate-950 text-xs font-bold rounded-xl hover:bg-amber-300"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => {
-                          setPasscodeDraft(adminPasscode);
-                          setIsEditingPasscode(false);
-                        }}
-                        className="px-3 py-1.5 bg-slate-800 text-slate-400 text-xs rounded-xl hover:text-white"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <span className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-amber-400/40 text-amber-300 font-mono font-bold text-sm tracking-widest">
-                        {adminPasscode}
-                      </span>
-                      <button
-                        onClick={() => setIsEditingPasscode(true)}
-                        className="text-xs text-slate-400 hover:text-amber-400 underline"
-                      >
-                        Change Passcode
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Management Team Roster */}
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Authorized Admin Team Members</span>
-                    </h4>
-                    <p className="text-[11px] text-slate-400">
-                      Roster of directors and managers with administrative authority
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => setShowAddAdminForm(!showAddAdminForm)}
-                    className="text-xs text-amber-400 hover:underline font-semibold"
-                  >
-                    {showAddAdminForm ? 'Cancel' : '+ Add Admin Member'}
-                  </button>
-                </div>
-
-                {showAddAdminForm && (
-                  <form
-                    onSubmit={handleAddAdminUser}
-                    className="p-3.5 rounded-xl bg-slate-950 border border-amber-400/30 space-y-3"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input
-                        type="text"
-                        value={newAdminName}
-                        onChange={(e) => setNewAdminName(e.target.value)}
-                        placeholder="Full Name (e.g. Kamal)"
-                        className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                        required
-                      />
-                      <input
-                        type="email"
-                        value={newAdminEmail}
-                        onChange={(e) => setNewAdminEmail(e.target.value)}
-                        placeholder="Email Address"
-                        className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                        required
-                      />
-                      <input
-                        type="text"
-                        value={newAdminTitle}
-                        onChange={(e) => setNewAdminTitle(e.target.value)}
-                        placeholder="Title (e.g. Co-Director)"
-                        className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      className="px-3.5 py-1.5 bg-amber-400 text-slate-950 text-xs font-bold rounded-lg hover:bg-amber-300"
-                    >
-                      Save Admin Member
-                    </button>
-                  </form>
-                )}
-
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Approved Admin Accounts
+                </h4>
                 <div className="space-y-1.5">
-                  {adminUsers.map((u) => (
+                  {ADMIN_EMAILS.map((email) => (
                     <div
-                      key={u.id}
-                      className="p-2.5 rounded-xl bg-slate-950/50 border border-slate-800/80 flex items-center justify-between text-xs"
+                      key={email}
+                      className="p-2.5 rounded-xl bg-slate-950/50 border border-slate-800/80 flex items-center gap-2 text-xs"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                        <span className="font-bold text-white">{u.name}</span>
-                        <span className="text-slate-400">({u.email})</span>
-                      </div>
-                      <span className="text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
-                        {u.roleTitle}
-                      </span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span className="font-bold text-white">{email}</span>
                     </div>
                   ))}
                 </div>
@@ -560,12 +335,11 @@ export const AccessModal: React.FC<AccessModalProps> = ({
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-white">{client.name}</span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-amber-400 border border-slate-800">
-                            {client.accessCode || 'MC-ACCESS'}
-                          </span>
                         </div>
                         <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-xs">
-                          {client.companyName} • Contact: {client.contactPerson}
+                          {[client.companyName, client.contactPerson ? `Contact: ${client.contactPerson}` : '']
+                            .filter(Boolean)
+                            .join(' • ')}
                         </p>
                       </div>
 

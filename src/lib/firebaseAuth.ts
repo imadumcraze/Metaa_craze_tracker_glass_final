@@ -7,10 +7,12 @@ import {
   User,
   signOut
 } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 const provider = new GoogleAuthProvider();
 // Required Google Sheets scope
@@ -18,6 +20,10 @@ provider.addScope('https://www.googleapis.com/auth/spreadsheets');
 
 let isSigningIn = false;
 let cachedAccessToken: string | null = null;
+
+export const subscribeToAuthUser = (callback: (user: User | null) => void) => {
+  return onAuthStateChanged(auth, callback);
+};
 
 export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,

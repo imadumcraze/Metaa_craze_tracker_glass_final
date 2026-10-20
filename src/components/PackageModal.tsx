@@ -129,6 +129,12 @@ export const PackageModal: React.FC<PackageModalProps> = ({
     onClose();
   };
 
+  const selectableClients = clients.filter((c) => {
+    if (c.status === 'Active') return true;
+    if (packageToEdit && c.id === packageToEdit.clientId) return true;
+    return false;
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
       <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden my-8">
@@ -168,9 +174,9 @@ export const PackageModal: React.FC<PackageModalProps> = ({
                 className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
               >
                 <option value="">Select a client...</option>
-                {clients.map((c) => (
+                {selectableClients.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.companyName ? `${c.name} (${c.companyName})` : c.name} {c.status === 'Inactive' ? '[Inactive]' : ''}
+                    {c.companyName ? `${c.name} (${c.companyName})` : c.name}{c.status === 'Inactive' ? ' (inactive)' : ''}
                   </option>
                 ))}
               </select>

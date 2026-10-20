@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Client, MonthlyPackage, ContentItem } from '../types';
+import { Client, MonthlyPackage, ContentItem, UserRole } from '../types';
 import { MONTH_NAMES } from '../lib/storage';
 import { StatusBadge } from './StatusBadge';
 import { exportReportToGoogleSheets } from '../lib/sheetsService';
@@ -30,7 +30,7 @@ interface ReportsViewProps {
   defaultClientId?: string;
   selectedMonth: number;
   selectedYear: number;
-  currentRole?: 'admin' | 'viewer' | 'client';
+  currentRole?: UserRole;
   restrictedClientId?: string;
 }
 
@@ -83,6 +83,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const approvedCount = items.filter(i => i.status === 'Approved').length;
   const pendingCount = items.filter(i => i.status === 'Pending Approval').length;
   const inProgressCount = items.filter(i => i.status === 'In Progress').length;
+  const completedCount = items.filter(i => i.status === 'Completed').length;
   const notStartedCount = items.filter(i => i.status === 'Not Started').length;
   const onHoldCount = items.filter(i => i.status === 'On Hold').length;
 
@@ -461,7 +462,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </span>
           </h3>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 text-center text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2 text-center text-xs">
             <div className="p-2.5 rounded-xl bg-slate-100 border border-slate-200">
               <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Agreed</span>
               <span className="text-base font-black text-slate-900">{totalAgreed}</span>
@@ -485,6 +486,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-200">
               <span className="text-[10px] uppercase font-bold text-purple-700 block">In Progress</span>
               <span className="text-base font-black text-purple-800">{inProgressCount}</span>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-teal-50 border border-teal-200">
+              <span className="text-[10px] uppercase font-bold text-teal-700 block">Completed</span>
+              <span className="text-base font-black text-teal-800">{completedCount}</span>
             </div>
 
             <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
@@ -567,6 +573,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                               ? 'bg-amber-100 text-amber-800 border-amber-200'
                               : item.status === 'In Progress'
                               ? 'bg-purple-100 text-purple-800 border-purple-200'
+                              : item.status === 'Completed'
+                              ? 'bg-teal-100 text-teal-800 border-teal-200'
                               : item.status === 'On Hold'
                               ? 'bg-orange-100 text-orange-800 border-orange-200'
                               : 'bg-slate-100 text-slate-700 border-slate-200'

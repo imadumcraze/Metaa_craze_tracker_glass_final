@@ -1,9 +1,64 @@
 @import "tailwindcss";
 
+@theme {
+  --color-amber-50: #fef2f2;
+  --color-amber-100: #fee2e2;
+  --color-amber-200: #fecaca;
+  --color-amber-300: #f87171;
+  --color-amber-400: #ef4444;
+  --color-amber-500: #dc2626;
+  --color-amber-600: #b91c1c;
+  --color-amber-700: #991b1b;
+  --color-amber-800: #7f1d1d;
+  --color-amber-900: #450a0a;
+  --color-amber-950: #2a0606;
+
+  --color-slate-50: #fafafa;
+  --color-slate-100: #f4f4f5;
+  --color-slate-200: #e4e4e7;
+  --color-slate-300: #d4d4d8;
+  --color-slate-400: #d4d4dc;
+  --color-slate-500: #c4c4cc;
+  --color-slate-600: #52525b;
+  --color-slate-700: #3f3f46;
+  --color-slate-800: #27272a;
+  --color-slate-900: #18181b;
+  --color-slate-950: #09090b;
+}
+
+:root {
+  --glass-blur: 28px;
+  --glass-saturate: 1.6;
+  --glass-radius: 28px;
+  --glass-edge: rgba(255, 255, 255, 0.28);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --glass-blur: 18px;
+    --glass-saturate: 1.4;
+  }
+}
+
 @layer base {
+  html {
+    color-scheme: dark;
+    scroll-padding-top: calc(var(--topbar-h, 150px) + 12px);
+    overflow-x: clip;
+  }
+
   body {
-    @apply bg-slate-950 text-slate-100 min-h-screen antialiased;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    @apply text-slate-100 min-h-screen antialiased;
+    overflow-x: clip;
+    background: transparent !important;
+    background-color: transparent !important;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
   }
 
   code, pre, .font-mono {
@@ -11,23 +66,584 @@
   }
 }
 
-/* Custom scrollbars */
+/* =========================================================================
+   A. BACKGROUND (photo only, NO colored gradients, NO dark overlay)
+   ========================================================================= */
+
+#app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: #09090b;
+  background-image: url('/bg-soft-desktop.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+@media (max-width: 767px) {
+  #app-bg {
+    background-image: url('/bg-soft-mobile.webp');
+  }
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+/* =========================================================================
+   C. GLASS CLASSES (white-based transparency ONLY, NO dark/grey fills)
+   ========================================================================= */
+
+.glass {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.08) 100%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--glass-radius);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.55), inset 1.5px 0 0 rgba(255, 255, 255, 0.20), inset 0 -1px 0 rgba(255, 255, 255, 0.08), 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.glass-strong {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.08));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--glass-radius);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.55), inset 1.5px 0 0 rgba(255, 255, 255, 0.20), inset 0 -1px 0 rgba(255, 255, 255, 0.08), 0 16px 48px rgba(0, 0, 0, 0.25);
+}
+
+.glass-pill {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.08) 100%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15);
+  border: 1px solid var(--glass-edge);
+  border-radius: 9999px;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 0 rgba(255, 255, 255, 0.08), 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.glass-inner {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* =========================================================================
+   D. GLOBAL MAPPING OF EXISTING SURFACES (UNLAYERED CSS RULES)
+   ========================================================================= */
+
+/* Big containers and cards: .glass surface with bright refraction */
+.bg-slate-900,
+.bg-slate-900\/90,
+.bg-slate-900\/80,
+.bg-slate-900\/60,
+.bg-slate-900\/50,
+.bg-slate-900\/40,
+.bg-slate-950\/95,
+.bg-slate-950\/90,
+[class*="from-slate-900"][class*="to-slate-950"] {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.08) 100%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--glass-radius);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.55), inset 1.5px 0 0 rgba(255, 255, 255, 0.20), inset 0 -1px 0 rgba(255, 255, 255, 0.08), 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+/* Pinned Top Bar wrapper (single glass pane) */
+#app-topbar {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.08) 100%) !important;
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15) !important;
+  border-bottom: 1px solid var(--glass-edge) !important;
+  border-radius: 0 !important;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.55), 0 8px 32px rgba(0, 0, 0, 0.18) !important;
+  padding-top: env(safe-area-inset-top);
+  overflow: visible;
+}
+
+#app-topbar header,
+#app-topbar nav {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+#app-topbar header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10) !important;
+}
+
+/* Base transitions for topbar shrink */
+#app-topbar,
+#app-topbar header,
+#app-topbar nav,
+.topbar-header-inner,
+.topbar-logo,
+.topbar-tracker-badge,
+.topbar-month-picker,
+.topbar-month-btn,
+.topbar-month-select,
+.topbar-year-select,
+.topbar-admin-btn,
+.topbar-add-btn,
+.topbar-nav-inner {
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Under prefers-reduced-motion: reduce, disable transitions */
+@media (prefers-reduced-motion: reduce) {
+  #app-topbar,
+  #app-topbar *,
+  .topbar-header-inner,
+  .topbar-logo,
+  .topbar-tracker-badge,
+  .topbar-month-picker,
+  .topbar-month-btn,
+  .topbar-month-select,
+  .topbar-year-select,
+  .topbar-admin-btn,
+  .topbar-add-btn,
+  .topbar-nav-inner {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Compact sizes when data-compact="true" */
+#app-topbar[data-compact="true"] .topbar-header-inner {
+  height: 3.25rem !important; /* 52px: vertical padding reduced by about half */
+}
+
+#app-topbar[data-compact="true"] .topbar-logo {
+  height: 2.25rem !important; /* h-9 = 36px on desktop (~60% of h-14) */
+}
+
+#app-topbar[data-compact="true"] .topbar-tracker-badge {
+  display: none !important;
+}
+
+#app-topbar[data-compact="true"] .topbar-month-picker {
+  padding: 0.25rem 0.375rem !important;
+  gap: 0.25rem !important;
+}
+
+#app-topbar[data-compact="true"] .topbar-month-btn {
+  padding: 0.25rem !important;
+}
+
+#app-topbar[data-compact="true"] .topbar-month-select,
+#app-topbar[data-compact="true"] .topbar-year-select {
+  font-size: 0.75rem !important; /* text-xs */
+}
+
+#app-topbar[data-compact="true"] .topbar-admin-btn {
+  padding: 0.25rem 0.625rem !important;
+  font-size: 0.6875rem !important; /* 11px */
+}
+
+#app-topbar[data-compact="true"] .topbar-add-btn {
+  padding: 0.3125rem 0.625rem !important;
+  font-size: 0.75rem !important; /* text-xs */
+}
+
+#app-topbar[data-compact="true"] .topbar-nav-inner {
+  padding-top: 0.375rem !important; /* py-1.5: reduced by 4px from py-2.5 */
+  padding-bottom: 0.375rem !important;
+}
+
+/* On phones (max-width 767px) the header uses the compact sizes from the start */
+@media (max-width: 767px) {
+  #app-topbar .topbar-header-inner {
+    height: 3.25rem !important;
+  }
+
+  #app-topbar .topbar-logo {
+    height: 2rem !important;
+  }
+
+  #app-topbar .topbar-month-picker {
+    padding: 0.25rem 0.375rem !important;
+    gap: 0.25rem !important;
+  }
+
+  #app-topbar .topbar-month-btn {
+    padding: 0.25rem !important;
+  }
+
+  #app-topbar .topbar-month-select,
+  #app-topbar .topbar-year-select {
+    font-size: 0.75rem !important;
+  }
+
+  #app-topbar .topbar-admin-btn {
+    padding: 0.25rem 0.625rem !important;
+    font-size: 0.6875rem !important;
+  }
+
+  #app-topbar .topbar-add-btn {
+    padding: 0.3125rem 0.625rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  #app-topbar .topbar-nav-inner {
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+  }
+}
+
+/* Offset any other sticky element below the pinned top bar */
+main .sticky:not([class*="bottom-"]),
+.sticky-below-topbar {
+  top: var(--topbar-h, 150px) !important;
+}
+
+/* Modal dialog panels: .glass-strong for high readability */
+.fixed.inset-0 > div,
+.fixed.inset-0 .bg-slate-900 {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.08)) !important;
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.15) !important;
+  border: 1px solid var(--glass-edge) !important;
+  border-radius: var(--glass-radius) !important;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.55), inset 1.5px 0 0 rgba(255, 255, 255, 0.20), inset 0 -1px 0 rgba(255, 255, 255, 0.08), 0 16px 48px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Modal backdrop overlay: 35% dark scrim with 8px blur (only place dark fill is allowed) */
+.fixed.inset-0,
+[class*="fixed"][class*="inset-0"] {
+  background: rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* Nested sub-cards inside a glass container: .glass-inner, never stack blur on blur */
+.glass-inner,
+.bg-slate-900 .bg-slate-950\/60,
+.bg-slate-900 .bg-slate-950\/70,
+.bg-slate-900 .bg-slate-950\/50,
+.bg-slate-900 .bg-slate-950\/40,
+.glass .bg-slate-950\/60,
+.glass .bg-slate-950\/70,
+.glass .bg-slate-950\/50,
+.glass .bg-slate-950\/40,
+.glass .bg-slate-950\/90,
+.glass-strong .bg-slate-950\/60,
+.glass-strong .bg-slate-950\/50,
+.glass-strong .bg-slate-900\/60,
+.glass-strong .bg-slate-900\/50,
+.fixed.inset-0 > div [class*="bg-slate-950"] {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Prevent nested blurs anywhere inside an already blurred glass container */
+.bg-slate-900 .bg-slate-900,
+.glass .glass,
+.glass .bg-slate-900,
+.fixed.inset-0 > div * {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Small controls and chips (bg-slate-800*, bg-slate-700*) */
+.bg-slate-800,
+.bg-slate-800\/90,
+.bg-slate-800\/80,
+.bg-slate-800\/60,
+.bg-slate-800\/40,
+.bg-slate-800\/30,
+.bg-slate-700,
+.bg-slate-700\/80,
+.bg-slate-700\/50,
+.bg-slate-700\/40,
+.bg-slate-700\/30 {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.20);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Inputs, selects, textareas and status count pills: light fill, not black */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select,
+.bg-slate-950\/80,
+.bg-slate-950\/70,
+.bg-slate-950\/50,
+.bg-slate-950\/40,
+.bg-slate-950 {
+  background-color: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: #ffffff;
+}
+
+/* General border mappings */
+.border-slate-800,
+.border-slate-800\/90,
+.border-slate-800\/80,
+.border-slate-800\/60,
+.border-slate-800\/40,
+.border-slate-700,
+.border-slate-700\/80,
+.border-slate-700\/50 {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Tables: glass on wrapper only; rows and cells transparent without blur */
+table,
+thead,
+tbody,
+tfoot,
+tr,
+th,
+td,
+table *,
+button,
+button *,
+[role="button"],
+.badge,
+span[class*="rounded-full"],
+span[class*="rounded-md"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+table tr {
+  background: transparent !important;
+}
+
+thead tr,
+table thead th,
+tr.border-b[class*="bg-slate-950"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+tbody tr:hover,
+tr[class*="hover:bg-slate"]:hover,
+tr:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+table,
+thead tr,
+tbody tr,
+th,
+td,
+table .border-slate-800,
+.divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+.divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+/* Hover and focus state overrides */
+.hover\:bg-slate-700:hover,
+[class*="hover:bg-slate-700"]:hover {
+  background-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+.hover\:bg-slate-800:hover,
+[class*="hover:bg-slate-800"]:hover {
+  background-color: rgba(255, 255, 255, 0.20) !important;
+}
+
+.hover\:bg-slate-800\/80:hover,
+[class*="hover:bg-slate-800/80"]:hover {
+  background-color: rgba(255, 255, 255, 0.20) !important;
+}
+
+.hover\:bg-slate-800\/40:hover,
+.hover\:bg-slate-800\/30:hover,
+[class*="hover:bg-slate-800/30"]:hover,
+[class*="hover:bg-slate-800/40"]:hover {
+  background-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+.hover\:bg-slate-900:hover,
+.hover\:bg-slate-900\/80:hover,
+[class*="hover:bg-slate-900"]:hover {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.hover\:bg-slate-950:hover,
+[class*="hover:bg-slate-950"]:hover {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+.hover\:border-slate-700:hover,
+[class*="hover:border-slate-700"]:hover {
+  border-color: rgba(255, 255, 255, 0.40) !important;
+}
+
+.hover\:border-slate-750:hover,
+.hover\:border-slate-600:hover,
+[class*="hover:border-slate"]:hover {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+[class*="hover:border-cyan"]:hover {
+  border-color: rgba(6, 182, 212, 0.60) !important;
+}
+
+[class*="hover:border-purple"]:hover {
+  border-color: rgba(168, 85, 247, 0.60) !important;
+}
+
+[class*="focus:border-amber"]:focus,
+[class*="focus:border-amber"]:focus-within {
+  border-color: rgba(239, 68, 68, 0.85) !important;
+}
+
+[class*="focus:border-indigo"]:focus,
+[class*="focus:border-indigo"]:focus-within {
+  border-color: rgba(99, 102, 241, 0.85) !important;
+}
+
+/* Dropdown option lists: solid #1c1c22 background with light text */
+select option {
+  background-color: #1c1c22 !important;
+  color: #f4f4f5 !important;
+  text-shadow: none !important;
+}
+
+/* Text legibility on bright glass */
+h1, h2, h3, h4, h5, h6,
+.glass h1, .glass h2, .glass h3, .glass h4, .glass h5, .glass h6,
+.glass-strong h1, .glass-strong h2, .glass-strong h3,
+.glass p, .glass span, .glass div,
+.glass-strong p, .glass-strong span, .glass-strong div {
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+}
+
+button, [role="button"], .badge, input, select, textarea,
+#printable-report, #printable-report * {
+  text-shadow: none !important;
+}
+
+.text-slate-400 {
+  color: #d4d4dc;
+}
+
+.text-slate-500 {
+  color: #c4c4cc;
+}
+
+/* Liquid glass custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: rgba(255, 255, 255, 0.22);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Fallbacks: browsers without backdrop-filter or reduced transparency */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-strong,
+  .bg-slate-900,
+  .bg-slate-900\/60,
+  .bg-slate-900\/50,
+  .bg-slate-900\/80,
+  .bg-slate-900\/90,
+  .bg-slate-950\/90,
+  .bg-slate-950\/95,
+  #app-topbar,
+  .fixed.inset-0 > div,
+  .fixed.inset-0 .bg-slate-900 {
+    background: rgba(28, 26, 34, 0.92) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-strong,
+  .bg-slate-900,
+  .bg-slate-900\/60,
+  .bg-slate-900\/50,
+  .bg-slate-900\/80,
+  .bg-slate-900\/90,
+  .bg-slate-950\/90,
+  .bg-slate-950\/95,
+  #app-topbar,
+  .fixed.inset-0 > div,
+  .fixed.inset-0 .bg-slate-900 {
+    background: rgba(28, 26, 34, 0.92) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* Preserve printable white delivery report in ReportsView */
+#printable-report,
+#printable-report * {
+  background-color: transparent;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+#printable-report {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important;
+}
+
+#printable-report .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+#printable-report .text-slate-500 {
+  color: #64748b !important;
+}
+
+#printable-report .text-slate-600 {
+  color: #475569 !important;
+}
+
+#printable-report .text-slate-900 {
+  color: #0f172a !important;
+}
+
+#printable-report .text-slate-950 {
+  color: #020617 !important;
 }
 
 /* Print optimizations for PDF export */
@@ -50,8 +666,12 @@
     padding: 0 !important;
   }
 
-  header, nav, footer, .print\:hidden {
+  #app-topbar, header, nav, footer, .print\:hidden, #app-bg {
     display: none !important;
+  }
+
+  #app-topbar {
+    position: static !important;
   }
 
   #printable-report {

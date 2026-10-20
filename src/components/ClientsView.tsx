@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Client, MonthlyPackage, ContentItem, TabType } from '../types';
+import { Client, MonthlyPackage, ContentItem, TabType, UserRole } from '../types';
 import { StatusBadge } from './StatusBadge';
 import {
   Users,
@@ -27,7 +27,7 @@ interface ClientsViewProps {
   contentItems: ContentItem[];
   selectedMonth: number;
   selectedYear: number;
-  currentRole: 'admin' | 'viewer' | 'client';
+  currentRole: UserRole;
   onAddClient: () => void;
   onEditClient: (client: Client) => void;
   onDeleteClient?: (clientId: string) => void;
@@ -166,18 +166,31 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-slate-700">
                       {client.clientId}
                     </span>
-                    <button
-                      onClick={() => onToggleClientStatus(client.id)}
-                      title={`Click to ${client.status === 'Active' ? 'deactivate' : 'activate'}`}
-                      className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border transition-all ${
-                        client.status === 'Active'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                          : 'bg-slate-700/30 text-slate-400 border-slate-700 hover:bg-slate-700/50'
-                      }`}
-                    >
-                      <Power className="w-3 h-3" />
-                      <span>{client.status}</span>
-                    </button>
+                    {currentRole === 'admin' ? (
+                      <button
+                        onClick={() => onToggleClientStatus(client.id)}
+                        title={`Click to ${client.status === 'Active' ? 'deactivate' : 'activate'}`}
+                        className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border transition-all ${
+                          client.status === 'Active'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                            : 'bg-slate-700/30 text-slate-400 border-slate-700 hover:bg-slate-700/50'
+                        }`}
+                      >
+                        <Power className="w-3 h-3" />
+                        <span>{client.status}</span>
+                      </button>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${
+                          client.status === 'Active'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                            : 'bg-slate-700/30 text-slate-400 border-slate-700'
+                        }`}
+                      >
+                        <Power className="w-3 h-3" />
+                        <span>{client.status}</span>
+                      </span>
+                    )}
                   </div>
 
                   {/* Client Titles */}
@@ -285,7 +298,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {onLaunchClientPortal && (
+                    {currentRole === 'admin' && onLaunchClientPortal && (
                       <button
                         onClick={() => onLaunchClientPortal(client.id)}
                         className="px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-xl transition-colors"
@@ -319,7 +332,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       {/* Delete Client Confirmation Modal */}
       {clientToDelete && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-red-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-red-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
             <button
               onClick={() => setClientToDelete(null)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"

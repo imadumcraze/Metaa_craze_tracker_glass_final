@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonthlyPackage, Client, ContentItem, TabType } from '../types';
+import { MonthlyPackage, Client, ContentItem, TabType, UserRole } from '../types';
 import { MONTH_NAMES } from '../lib/storage';
 import {
   Package,
@@ -11,7 +11,8 @@ import {
   Building2,
   ArrowRight,
   Layers,
-  FileCheck
+  FileCheck,
+  EyeOff
 } from 'lucide-react';
 
 interface PackagesViewProps {
@@ -20,7 +21,7 @@ interface PackagesViewProps {
   contentItems: ContentItem[];
   selectedMonth: number;
   selectedYear: number;
-  currentRole?: 'admin' | 'viewer' | 'client';
+  currentRole?: UserRole;
   onAddPackage: () => void;
   onEditPackage: (pkg: MonthlyPackage) => void;
   onGenerateContentForPackage: (pkg: MonthlyPackage) => void;
@@ -109,12 +110,14 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
               ? ((publishedCount / pkg.totalDeliverables) * 100).toFixed(0)
               : 0;
 
-            const hasGeneratedItems = clientItems.length > 0;
+            const isClientInactive = client?.status === 'Inactive';
 
             return (
               <div
                 key={pkg.id}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all flex flex-col justify-between"
+                className={`bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all flex flex-col justify-between ${
+                  isClientInactive ? 'opacity-60 grayscale' : ''
+                }`}
               >
                 <div>
                   {/* Top Bar */}
@@ -129,15 +132,23 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
                       </span>
                     </div>
 
-                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
-                      pkg.status === 'Active'
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                        : pkg.status === 'Completed'
-                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-                        : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                    }`}>
-                      {pkg.status}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {isClientInactive && (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-slate-800/80 text-slate-400 border-slate-700/80 flex items-center gap-1">
+                          <EyeOff className="w-3 h-3 text-red-400" />
+                          <span>Client inactive</span>
+                        </span>
+                      )}
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                        pkg.status === 'Active'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          : pkg.status === 'Completed'
+                          ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                      }`}>
+                        {pkg.status}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Client Name */}
@@ -208,8 +219,14 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
                 <div className="mt-5 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
                   {currentRole === 'admin' ? (
                     <button
-                      onClick={() => onEditPackage(pkg)}
-                      className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors text-xs flex items-center gap-1.5"
+                      onClick={() => !isClientInactive && onEditPackage(pkg)}
+                      disabled={isClientInactive}
+                      title={isClientInactive ? "Reactivate this client in the Clients tab to use this" : undefined}
+                      className={`p-2 rounded-xl transition-colors text-xs flex items-center gap-1.5 ${
+                        isClientInactive
+                          ? 'text-slate-500 cursor-not-allowed'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      }`}
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                       <span>Edit Scope</span>
@@ -221,9 +238,14 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
                   <div className="flex items-center gap-2">
                     {currentRole === 'admin' && clientItems.length < pkg.totalDeliverables && (
                       <button
-                        onClick={() => onGenerateContentForPackage(pkg)}
-                        className="px-3 py-1.5 text-xs font-semibold text-amber-300 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 rounded-xl transition-colors flex items-center gap-1.5"
-                        title="Auto-create missing numbered items"
+                        onClick={() => !isClientInactive && onGenerateContentForPackage(pkg)}
+                        disabled={isClientInactive}
+                        title={isClientInactive ? "Reactivate this client in the Clients tab to use this" : "Auto-create missing numbered items"}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 border ${
+                          isClientInactive
+                            ? 'text-slate-500 bg-slate-800/40 border-slate-700/50 cursor-not-allowed'
+                            : 'text-amber-300 bg-amber-400/10 hover:bg-amber-400/20 border-amber-400/30'
+                        }`}
                       >
                         <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                         <span>Generate Missing ({pkg.totalDeliverables - clientItems.length})</span>
@@ -231,10 +253,16 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
                     )}
 
                     <button
-                      onClick={() => onNavigateTab('tracker', pkg.clientId)}
-                      className="px-3 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors flex items-center gap-1"
+                      onClick={() => !isClientInactive && onNavigateTab('tracker', pkg.clientId)}
+                      disabled={isClientInactive}
+                      title={isClientInactive ? "Reactivate this client in the Clients tab to use this" : undefined}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1 ${
+                        isClientInactive
+                          ? 'text-slate-500 bg-slate-800/40 cursor-not-allowed'
+                          : 'text-white bg-slate-800 hover:bg-slate-700'
+                      }`}
                     >
-                      <span>Track ({clientItems.length})</span>
+                      <span>View Content ({clientItems.length})</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>

@@ -90,9 +90,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const graphicsApproved = graphicsItems.filter(i => i.status === 'Approved').length;
   const graphicsPending = graphicsItems.filter(i => i.status === 'Pending Approval').length;
   const graphicsInProgress = graphicsItems.filter(i => i.status === 'In Progress').length;
+  const graphicsCompleted = graphicsItems.filter(i => i.status === 'Completed').length;
   const graphicsNotStarted = graphicsItems.filter(i => i.status === 'Not Started').length;
   const graphicsOnHold = graphicsItems.filter(i => i.status === 'On Hold').length;
   const graphicsOverdue = graphicsItems.filter(i => isContentOverdue(i)).length;
+
+  // Cumulative counts for metric pills
+  const graphicsApprovedTotal = graphicsItems.filter(
+    i => i.status === 'Approved' || i.status === 'Published'
+  ).length;
+  const graphicsCompletedTotal = graphicsItems.filter(
+    i => i.status === 'Completed' || i.status === 'Pending Approval' || i.status === 'Approved' || i.status === 'Published'
+  ).length;
+
   const graphicsRemaining = Math.max(0, totalAgreedGraphics - graphicsPublished);
   const graphicsPercent = totalAgreedGraphics > 0
     ? ((graphicsPublished / totalAgreedGraphics) * 100).toFixed(1)
@@ -112,9 +122,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const videosApproved = videoItems.filter(i => i.status === 'Approved').length;
   const videosPending = videoItems.filter(i => i.status === 'Pending Approval').length;
   const videosInProgress = videoItems.filter(i => i.status === 'In Progress').length;
+  const videosCompleted = videoItems.filter(i => i.status === 'Completed').length;
   const videosNotStarted = videoItems.filter(i => i.status === 'Not Started').length;
   const videosOnHold = videoItems.filter(i => i.status === 'On Hold').length;
   const videosOverdue = videoItems.filter(i => isContentOverdue(i)).length;
+
+  // Cumulative counts for metric pills
+  const videosApprovedTotal = videoItems.filter(
+    i => i.status === 'Approved' || i.status === 'Published'
+  ).length;
+  const videosCompletedTotal = videoItems.filter(
+    i => i.status === 'Completed' || i.status === 'Pending Approval' || i.status === 'Approved' || i.status === 'Published'
+  ).length;
+
   const videosRemaining = Math.max(0, totalAgreedVideos - videosPublished);
   const videosPercent = totalAgreedVideos > 0
     ? ((videosPublished / totalAgreedVideos) * 100).toFixed(1)
@@ -127,10 +147,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Dashboard Top Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 border border-slate-800 p-6 sm:p-8 shadow-xl">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
+      <div className="relative overflow-hidden rounded-2xl glass p-6 sm:p-8 shadow-xl">
         <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">
@@ -251,7 +268,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Overdue Alert Banner if any */}
       {overdueCount > 0 && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl glass border border-red-500/30 text-red-200">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-red-500/20 text-red-400 shrink-0">
               <AlertTriangle className="w-5 h-5" />
@@ -334,6 +351,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   title={`Pending: ${graphicsPending}`}
                 />
               )}
+              {graphicsCompleted > 0 && (
+                <div
+                  style={{ width: `${(graphicsCompleted / (totalAgreedGraphics || 1)) * 100}%` }}
+                  className="bg-teal-500 h-full"
+                  title={`Completed: ${graphicsCompleted}`}
+                />
+              )}
               {graphicsInProgress > 0 && (
                 <div
                   style={{ width: `${(graphicsInProgress / (totalAgreedGraphics || 1)) * 100}%` }}
@@ -359,18 +383,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Detailed Graphics Metric Pills */}
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center text-xs">
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 text-center text-xs">
             <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800">
               <span className="text-[10px] text-emerald-400 font-semibold uppercase block">Published</span>
               <span className="text-base font-black text-white">{graphicsPublished}</span>
             </div>
-            <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800">
+            <div
+              className="bg-slate-950/60 p-2 rounded-xl border border-slate-800"
+              title="Approved plus Published"
+            >
               <span className="text-[10px] text-blue-400 font-semibold uppercase block">Approved</span>
-              <span className="text-base font-black text-white">{graphicsApproved}</span>
+              <span className="text-base font-black text-white">{graphicsApprovedTotal}</span>
             </div>
             <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800">
               <span className="text-[10px] text-amber-400 font-semibold uppercase block">Pending</span>
               <span className="text-base font-black text-white">{graphicsPending}</span>
+            </div>
+            <div
+              className="bg-slate-950/60 p-2 rounded-xl border border-slate-800"
+              title="Completed and every stage after it"
+            >
+              <span className="text-[10px] text-teal-400 font-semibold uppercase block">Completed</span>
+              <span className="text-base font-black text-white">{graphicsCompletedTotal}</span>
             </div>
             <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800">
               <span className="text-[10px] text-purple-400 font-semibold uppercase block">In Prog</span>
@@ -443,6 +477,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   title={`Pending: ${videosPending}`}
                 />
               )}
+              {videosCompleted > 0 && (
+                <div
+                  style={{ width: `${(videosCompleted / (totalAgreedVideos || 1)) * 100}%` }}
+                  className="bg-teal-500 h-full"
+                  title={`Completed: ${videosCompleted}`}
+                />
+              )}
               {videosInProgress > 0 && (
                 <div
                   style={{ width: `${(videosInProgress / (totalAgreedVideos || 1)) * 100}%` }}
@@ -468,18 +509,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Detailed Videos Metric Pills */}
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center text-xs">
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 text-center text-xs">
             <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800">
               <span className="text-[10px] text-emerald-400 font-semibold uppercase block">Published</span>
               <span className="text-base font-black text-white">{videosPublished}</span>
             </div>
-            <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800">
+            <div
+              className="bg-slate-950/60 p-2 rounded-xl border border-slate-800"
+              title="Approved plus Published"
+            >
               <span className="text-[10px] text-blue-400 font-semibold uppercase block">Approved</span>
-              <span className="text-base font-black text-white">{videosApproved}</span>
+              <span className="text-base font-black text-white">{videosApprovedTotal}</span>
             </div>
             <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800">
               <span className="text-[10px] text-amber-400 font-semibold uppercase block">Pending</span>
               <span className="text-base font-black text-white">{videosPending}</span>
+            </div>
+            <div
+              className="bg-slate-950/60 p-2 rounded-xl border border-slate-800"
+              title="Completed and every stage after it"
+            >
+              <span className="text-[10px] text-teal-400 font-semibold uppercase block">Completed</span>
+              <span className="text-base font-black text-white">{videosCompletedTotal}</span>
             </div>
             <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800">
               <span className="text-[10px] text-purple-400 font-semibold uppercase block">In Prog</span>

@@ -1,11 +1,21 @@
 export type ClientStatus = 'Active' | 'Inactive';
 
-export type UserRole = 'admin' | 'viewer' | 'client';
+export type UserRole = 'admin' | 'viewer' | 'client' | 'moderator';
 
 export interface UserAccessSession {
   role: UserRole;
   clientId?: string; // Set when role is 'client'
   clientName?: string;
+}
+
+export interface TeamMember {
+  uid: string;
+  name: string;
+  roleTitle: string; // e.g. "Graphic Designer", "Video Editor", "Content Writer"
+  username: string;
+  active: boolean;
+  createdAt: string;
+  createdBy?: string;
 }
 
 export interface AdminUser {
@@ -77,10 +87,18 @@ export type ContentType =
 export type ContentStatus =
   | 'Not Started'
   | 'In Progress'
+  | 'Completed'
   | 'Pending Approval'
   | 'Approved'
   | 'Published'
   | 'On Hold';
+
+export interface ContentAssignee {
+  uid: string;
+  name: string;
+  roleTitle?: string;
+  active?: boolean;
+}
 
 export interface ContentItem {
   id: string;
@@ -100,6 +118,45 @@ export interface ContentItem {
   remarks?: string;
   createdAt: string;
   updatedAt: string;
+  completedAt?: string; // ISO string when item was marked done
+  completedById?: string; // uid of team member who completed it, or empty for admin
+  // Multiple team member assignments
+  assignees?: ContentAssignee[];
+  assigneeIds?: string[];
+  // Legacy single assignment fields (deprecated - use assignees / assigneeIds)
+  assignedToId?: string;
+  assignedToName?: string;
+  assignedToRole?: string;
+  assignedToActive?: boolean;
+}
+
+export interface ContentNote {
+  id: string;
+  contentItemId: string;
+  clientId?: string;
+  text: string;
+  authorId: string;
+  authorName: string;
+  authorRole: 'admin' | 'team';
+  authorTitle?: string;
+  createdAt: string;
+  updatedAt?: string;
+  edited?: boolean;
+  editedByName?: string;
+}
+
+export interface TeamTask {
+  id: string;
+  assignedToId: string;
+  assignedToName: string;
+  title: string;
+  notes?: string;
+  date: string; // YYYY-MM-DD
+  done: boolean;
+  doneAt?: string;
+  createdAt: string;
+  createdBy?: string;
+  updatedAt?: string;
 }
 
 export type TabType =
@@ -108,4 +165,5 @@ export type TabType =
   | 'packages'
   | 'tracker'
   | 'calendar'
-  | 'reports';
+  | 'reports'
+  | 'team';

@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import { ContentItem, Client, ContentStatus } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ContentItem, Client, ContentStatus, UserRole } from '../types';
 import { MONTH_NAMES, isContentOverdue } from '../lib/storage';
+import { useSriLankaToday } from '../lib/dateUtils';
+import { getItemAssignees, formatAssigneesShort } from '../lib/assignees';
+import { isGraphicsType, isVideosType } from './DashboardView';
 import {
   CalendarDays,
   ChevronLeft,
@@ -14,7 +17,9 @@ import {
   PauseCircle,
   AlertTriangle,
   ExternalLink,
-  Plus
+  Plus,
+  Image,
+  Film
 } from 'lucide-react';
 
 interface CalendarViewProps {
@@ -22,7 +27,7 @@ interface CalendarViewProps {
   clients: Client[];
   selectedMonth: number;
   selectedYear: number;
-  currentRole?: 'admin' | 'viewer' | 'client';
+  currentRole?: UserRole;
   onSelectMonthYear: (month: number, year: number) => void;
   onEditItem: (item: ContentItem) => void;
   onAddItemForDate: (dateStr: string, clientId?: string) => void;
@@ -39,8 +44,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onAddItemForDate
 }) => {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [typeFilter, setTypeFilter] = useState<'All' | 'Graphics' | 'Videos'>('All');
   const [selectedDayModal, setSelectedDayModal] = useState<string | null>(null);
 
+  // If selected client is no longer present in clients list, reset to All
+  useEffect(() => {
+    if (selectedClientId && !clients.some(c => c.id === selectedClientId)) {
+      setSelectedClientId('');
+    }
+  }, [clients, selectedClientId]);
+
+  const today = useSriLankaToday();
   const monthName = MONTH_NAMES[selectedMonth - 1];
 
   // Calendar math for selectedMonth and selectedYear
@@ -48,8 +62,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const startingDayOfWeek = firstDayOfMonth.getDay(); // 0 is Sunday
   const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
 
-  // Filter content items with plannedDate in this month & year
-  const monthItems = contentItems.filter(item => {
+  // Filter content items with plannedDate in this month & year for selected client
+  const clientFilteredItems = contentItems.filter(item => {
     if (selectedClientId && item.clientId !== selectedClientId) return false;
     if (!item.plannedDate) return false;
     const parts = item.plannedDate.split('-');
@@ -57,6 +71,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     const y = parseInt(parts[0], 10);
     const m = parseInt(parts[1], 10);
     return y === selectedYear && m === selectedMonth;
+  });
+
+  // Counts for segmented type buttons in this month (after client filter)
+  const allCount = clientFilteredItems.length;
+  const graphicsCount = clientFilteredItems.filter(item => isGraphicsType(item.contentType)).length;
+  const videosCount = clientFilteredItems.filter(item => isVideosType(item.contentType)).length;
+
+  // Apply type filter together with the client filter
+  const monthItems = clientFilteredItems.filter(item => {
+    if (typeFilter === 'Graphics') return isGraphicsType(item.contentType);
+    if (typeFilter === 'Videos') return isVideosType(item.contentType);
+    return true;
   });
 
   // Group items by day (1..31)
@@ -80,6 +106,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
       case 'In Progress':
         return 'bg-purple-500/20 text-purple-300 border-purple-500/40';
+      case 'Completed':
+        return 'bg-teal-500/20 text-teal-300 border-teal-500/40';
       case 'On Hold':
         return 'bg-orange-500/20 text-orange-300 border-orange-500/40';
       case 'Not Started':
@@ -104,8 +132,48 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </p>
         </div>
 
-        {/* Client Filter */}
-        <div className="flex items-center gap-3">
+        {/* Filters: Segmented Type Filter & Client Filter */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Segmented Type Filter */}
+          <div className="inline-flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setTypeFilter('All')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                typeFilter === 'All'
+                  ? 'bg-amber-400 text-slate-950 shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              All ({allCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeFilter('Graphics')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                typeFilter === 'Graphics'
+                  ? 'bg-amber-400 text-slate-950 shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Image className="w-3.5 h-3.5 shrink-0" />
+              <span>Graphics ({graphicsCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeFilter('Videos')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                typeFilter === 'Videos'
+                  ? 'bg-amber-400 text-slate-950 shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Film className="w-3.5 h-3.5 shrink-0" />
+              <span>Videos ({videosCount})</span>
+            </button>
+          </div>
+
+          {/* Client Filter */}
           <select
             value={selectedClientId}
             onChange={(e) => setSelectedClientId(e.target.value)}
@@ -141,6 +209,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <span>In Progress</span>
         </span>
         <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-teal-400" />
+          <span>Completed</span>
+        </span>
+        <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
           <span>On Hold</span>
         </span>
@@ -160,7 +232,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </div>
 
         {/* Calendar Day Cells */}
-        <div className="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-slate-800/80 bg-slate-950/20">
+        <div className="grid grid-cols-7 divide-x divide-y divide-slate-800/80 bg-slate-950/20">
           {/* Empty cells before month start */}
           {Array.from({ length: startingDayOfWeek }).map((_, i) => (
             <div key={`empty-${i}`} className="min-h-[110px] p-2 bg-slate-950/40 opacity-30" />
@@ -172,13 +244,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             const items = itemsByDay[dayNum] || [];
             const dateStr = `${selectedYear}-${selectedMonth < 10 ? '0' + selectedMonth : selectedMonth}-${dayNum < 10 ? '0' + dayNum : dayNum}`;
 
-            const isToday =
-              selectedYear === 2026 && selectedMonth === 9 && dayNum === 29;
+            const isToday = dateStr === today;
 
             return (
               <div
                 key={dayNum}
-                className={`min-h-[110px] p-2 transition-colors flex flex-col justify-between group hover:bg-slate-800/30 ${
+                className={`min-h-[110px] p-2 transition-colors flex flex-col group hover:bg-slate-800/30 ${
                   isToday ? 'bg-amber-400/5 ring-1 ring-inset ring-amber-400/30' : ''
                 }`}
               >
@@ -206,18 +277,28 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 </div>
 
                 {/* Day's Content Items */}
-                <div className="space-y-1 overflow-y-auto max-h-[85px] scrollbar-none">
+                <div className="space-y-1">
                   {items.map((item) => {
                     const client = clients.find(c => c.id === item.clientId);
                     const isOverdue = isContentOverdue(item);
                     const colorClasses = getStatusColor(item.status, isOverdue);
+                    const assignees = getItemAssignees(item);
+                    const assigneesTooltip = assignees.length > 0
+                      ? ` [Assigned: ${assignees.map((a) => `${a.name}${a.roleTitle ? ` (${a.roleTitle})` : ''}`).join(', ')}]`
+                      : '';
 
                     return (
                       <div
                         key={item.id}
-                        onClick={() => onEditItem(item)}
-                        className={`px-1.5 py-1 rounded-md text-[11px] border font-medium cursor-pointer transition-all hover:scale-[1.02] ${colorClasses}`}
-                        title={`${client?.name}: ${item.displayNumber} - ${item.title} (${item.status})`}
+                        onClick={() => {
+                          if (currentRole === 'admin') {
+                            onEditItem(item);
+                          }
+                        }}
+                        className={`px-1.5 py-1 rounded-md text-[11px] border font-medium transition-all ${
+                          currentRole === 'admin' ? 'cursor-pointer hover:scale-[1.02]' : 'cursor-default'
+                        } ${colorClasses}`}
+                        title={`${client?.name}: ${item.displayNumber} - ${item.title} (${item.status})${assigneesTooltip}`}
                       >
                         <div className="flex items-center justify-between gap-1 leading-tight">
                           <span className="font-bold truncate">{client?.name}</span>
@@ -225,17 +306,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             {item.status === 'Published' ? '✓' : ''}
                           </span>
                         </div>
-                        <div className="text-[10px] truncate opacity-90">
-                          {item.displayNumber}
+                        <div className="text-[10px] truncate opacity-90 flex items-center justify-between gap-1">
+                          <span className="truncate">{item.displayNumber}</span>
+                          {assignees.length > 0 && (
+                            <span
+                              className="text-[9px] opacity-75 font-mono shrink-0 truncate max-w-[110px]"
+                              title={assignees.map((a) => `${a.name}${a.roleTitle ? ` (${a.roleTitle})` : ''}`).join(', ')}
+                            >
+                              @{assignees.length <= 2
+                                ? formatAssigneesShort(item)
+                                : `${formatAssigneesShort({ assignees: assignees.slice(0, 2) })} +${assignees.length - 2}`}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
-
-                {items.length === 0 && (
-                  <div className="h-4" />
-                )}
               </div>
             );
           })}

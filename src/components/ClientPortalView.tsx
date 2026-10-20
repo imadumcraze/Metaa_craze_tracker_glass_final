@@ -14,7 +14,6 @@ import {
   Image as ImageIcon,
   Film,
   Lock,
-  ArrowLeft,
   Check,
   CalendarDays
 } from 'lucide-react';
@@ -27,7 +26,6 @@ interface ClientPortalViewProps {
   selectedYear: number;
   onMonthChange: (month: number, year: number) => void;
   onOpenReport: () => void;
-  onExitClientMode: () => void;
 }
 
 export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
@@ -37,8 +35,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
   selectedMonth,
   selectedYear,
   onMonthChange,
-  onOpenReport,
-  onExitClientMode
+  onOpenReport
 }) => {
   const [activeTab, setActiveTab] = useState<'tracker' | 'calendar'>('tracker');
   const [filterType, setFilterType] = useState<string>('All');
@@ -84,9 +81,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Client Portal Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 border border-emerald-500/30 p-6 sm:p-8 shadow-xl">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
+      <div className="relative overflow-hidden rounded-2xl glass border border-emerald-500/30 p-6 sm:p-8 shadow-xl">
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
@@ -112,15 +107,6 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
             >
               <FileSpreadsheet className="w-4 h-4 stroke-[2.5]" />
               <span>Download Monthly Report (PDF)</span>
-            </button>
-
-            <button
-              onClick={onExitClientMode}
-              className="px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-colors flex items-center gap-1.5"
-              title="Return to Agency Management / Admin Access"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Exit Portal</span>
             </button>
           </div>
         </div>
@@ -232,11 +218,13 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
             className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-amber-500"
           >
             <option value="All">All Statuses</option>
-            <option value="Published">Published</option>
-            <option value="Approved">Approved</option>
-            <option value="Pending Approval">Pending Approval</option>
-            <option value="In Progress">In Progress</option>
             <option value="Not Started">Not Started</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Pending Approval">Pending Approval</option>
+            <option value="Approved">Approved</option>
+            <option value="Published">Published</option>
+            <option value="On Hold">On Hold</option>
           </select>
         </div>
 

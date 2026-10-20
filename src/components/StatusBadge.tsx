@@ -1,6 +1,6 @@
 import React from 'react';
 import { ContentStatus } from '../types';
-import { CheckCircle2, ThumbsUp, Clock, Sparkles, CircleDashed, PauseCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, ThumbsUp, Clock, Sparkles, CircleDashed, PauseCircle, AlertTriangle, CheckCheck } from 'lucide-react';
 
 interface StatusBadgeProps {
   status: ContentStatus;
@@ -40,6 +40,12 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
           bg: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
           icon: Sparkles,
           label: 'In Progress'
+        };
+      case 'Completed':
+        return {
+          bg: 'bg-teal-500/15 text-teal-400 border-teal-500/30',
+          icon: CheckCheck,
+          label: 'Completed'
         };
       case 'On Hold':
         return {

@@ -57,6 +57,7 @@ export const exportReportToGoogleSheets = async ({
   const approvedCount = items.filter(i => i.status === 'Approved').length;
   const pendingCount = items.filter(i => i.status === 'Pending Approval').length;
   const inProgressCount = items.filter(i => i.status === 'In Progress').length;
+  const completedCount = items.filter(i => i.status === 'Completed').length;
   const notStartedCount = items.filter(i => i.status === 'Not Started').length;
   const onHoldCount = items.filter(i => i.status === 'On Hold').length;
   const completionRate = totalAgreed > 0 ? ((publishedCount / totalAgreed) * 100).toFixed(1) : '0';
@@ -77,6 +78,7 @@ export const exportReportToGoogleSheets = async ({
       'Approved',
       'Pending Approval',
       'In Progress',
+      'Completed',
       'Not Started',
       'On Hold',
       'Completion Rate'
@@ -87,6 +89,7 @@ export const exportReportToGoogleSheets = async ({
       approvedCount,
       pendingCount,
       inProgressCount,
+      completedCount,
       notStartedCount,
       onHoldCount,
       `${completionRate}%`
@@ -119,7 +122,7 @@ export const exportReportToGoogleSheets = async ({
 
   // 3. Write data to sheet
   const updateResponse = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${monthName} ${year} Delivery'!A1:H${rows.length}?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${monthName} ${year} Delivery'!A1:I${rows.length}?valueInputOption=USER_ENTERED`,
     {
       method: 'PUT',
       headers: {

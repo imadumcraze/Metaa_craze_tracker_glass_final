@@ -73,9 +73,28 @@
         "postUrl": { "type": "string", "description": "Live social media URL" },
         "remarks": { "type": "string", "description": "Internal notes or feedback" },
         "createdAt": { "type": "string", "description": "ISO timestamp of creation" },
-        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" }
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" },
+        "assignedToId": { "type": "string", "description": "UID of assigned team member" },
+        "assignedToName": { "type": "string", "description": "Display name of assigned team member" },
+        "assignedToRole": { "type": "string", "description": "Role title of assigned team member" },
+        "assignedToActive": { "type": "boolean", "description": "Active status of assigned team member" }
       },
       "required": ["id", "clientId", "month", "year", "contentType", "status"]
+    },
+    "TeamMember": {
+      "title": "TeamMember",
+      "description": "Represents an agency production team member with moderator privileges",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID of the team member" },
+        "name": { "type": "string", "description": "Full name of the team member" },
+        "roleTitle": { "type": "string", "description": "Job role title e.g. Graphic Designer, Video Editor" },
+        "username": { "type": "string", "description": "Internal username handle without domain" },
+        "active": { "type": "boolean", "description": "Account active status" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of creation" },
+        "createdBy": { "type": "string", "description": "Email or ID of admin who created the account" }
+      },
+      "required": ["uid", "name", "roleTitle", "username", "active", "createdAt"]
     }
   },
   "firestore": {
@@ -90,6 +109,10 @@
     "/content/{contentId}": {
       "schema": { "$ref": "#/entities/ContentItem" },
       "description": "Individual social media deliverables and tracker items"
+    },
+    "/teamMembers/{uid}": {
+      "schema": { "$ref": "#/entities/TeamMember" },
+      "description": "Agency team member profiles and moderator access configuration"
     }
   }
 }

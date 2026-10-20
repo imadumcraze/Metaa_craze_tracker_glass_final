@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ContentItem, ContentType, ContentStatus, Client, MonthlyPackage } from '../types';
+import { ContentItem, ContentType, ContentStatus, Client, MonthlyPackage, TeamMember, ContentAssignee } from '../types';
 import { MONTH_NAMES, formatDisplayNumber, formatContentNumber } from '../lib/storage';
-import { X, Calendar, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { getSriLankaToday } from '../lib/dateUtils';
+import { getItemAssignees, buildAssigneeFields } from '../lib/assignees';
+import { X, Calendar, Link as LinkIcon, AlertCircle, UserCheck } from 'lucide-react';
 
 interface ContentItemModalProps {
   isOpen: boolean;
@@ -10,6 +12,7 @@ interface ContentItemModalProps {
   itemToEdit?: ContentItem | null;
   clients: Client[];
   packages: MonthlyPackage[];
+  teamMembers?: TeamMember[];
   defaultMonth: number;
   defaultYear: number;
   defaultClientId?: string;
@@ -23,6 +26,7 @@ export const ContentItemModal: React.FC<ContentItemModalProps> = ({
   itemToEdit,
   clients,
   packages,
+  teamMembers = [],
   defaultMonth,
   defaultYear,
   defaultClientId,
@@ -37,6 +41,7 @@ export const ContentItemModal: React.FC<ContentItemModalProps> = ({
   const [status, setStatus] = useState<ContentStatus>('Not Started');
   const [postUrl, setPostUrl] = useState('');
   const [remarks, setRemarks] = useState('');
+  const [selectedAssigneeUids, setSelectedAssigneeUids] = useState<string[]>([]);
   const [month, setMonth] = useState(defaultMonth);
   const [year, setYear] = useState(defaultYear);
   const [contentId, setContentId] = useState('');
@@ -63,6 +68,7 @@ export const ContentItemModal: React.FC<ContentItemModalProps> = ({
       setStatus(itemToEdit.status);
       setPostUrl(itemToEdit.postUrl || '');
       setRemarks(itemToEdit.remarks || '');
+      setSelectedAssigneeUids(getItemAssignees(itemToEdit).map((a) => a.uid));
       setMonth(itemToEdit.month);
       setYear(itemToEdit.year);
       setContentId(itemToEdit.contentId);
@@ -79,6 +85,7 @@ export const ContentItemModal: React.FC<ContentItemModalProps> = ({
       setStatus('Not Started');
       setPostUrl('');
       setRemarks('');
+      setSelectedAssigneeUids([]);
       setMonth(defaultMonth);
       setYear(defaultYear);
       const rand = Math.floor(100 + Math.random() * 900);
@@ -106,9 +113,19 @@ export const ContentItemModal: React.FC<ContentItemModalProps> = ({
     setStatus(newStatus);
     // If user marks as Published and actualPublishedDate is empty, auto-fill planned date or today
     if (newStatus === 'Published' && !actualPublishedDate) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getSriLankaToday();
       setActualPublishedDate(plannedDate || today);
     }
+  };
+
+  const handleToggleAssignee = (uid: string) => {
+    setSelectedAssigneeUids((prev) =>
+      prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]
+    );
+  };
+
+  const handleRemoveAssignee = (uid: string) => {
+    setSelectedAssigneeUids((prev) => prev.filter((id) => id !== uid));
   };
 
   if (!isOpen) return null;
@@ -135,6 +152,21 @@ export const ContentItemModal: React.FC<ContentItemModalProps> = ({
       return;
     }
 
+    const selectedAssignees: ContentAssignee[] = selectedAssigneeUids.map((uid) => {
+      const member = teamMembers.find((m) => m.uid === uid);
+      if (member) {
+        return {
+          uid: member.uid,
+          name: member.name,
+          roleTitle: member.roleTitle,
+          active: member.active
+        };
+      }
+      const existing = getItemAssignees(itemToEdit).find((a) => a.uid === uid);
+      return existing || { uid, name: 'Member', active: false };
+    });
+    const assigneeFields = buildAssigneeFields(selectedAssignees);
+
     const item: ContentItem = {
       id: itemToEdit?.id || `cnt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       contentId: contentId || `CNT-${year}${month < 10 ? '0' + month : month}-${Date.now().toString().slice(-3)}`,
@@ -152,12 +184,23 @@ export const ContentItemModal: React.FC<ContentItemModalProps> = ({
       postUrl: postUrl.trim(),
       remarks: remarks.trim(),
       createdAt: itemToEdit?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      completedAt: itemToEdit?.completedAt,
+      completedById: itemToEdit?.completedById,
+      ...assigneeFields
     };
 
     onSave(item);
     onClose();
   };
+
+  const visibleTeamMembers = teamMembers.filter((m) => m.active || selectedAssigneeUids.includes(m.uid));
+
+  const selectableClients = clients.filter((c) => {
+    if (c.status === 'Active') return true;
+    if (itemToEdit && c.id === itemToEdit.clientId) return true;
+    return false;
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
@@ -204,9 +247,9 @@ export const ContentItemModal: React.FC<ContentItemModalProps> = ({
                 className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
               >
                 <option value="">Select client...</option>
-                {clients.map(c => (
+                {selectableClients.map(c => (
                   <option key={c.id} value={c.id}>
-                    {c.name} {c.status === 'Inactive' ? '(Inactive)' : ''}
+                    {c.name}{c.status === 'Inactive' ? ' (inactive)' : ''}
                   </option>
                 ))}
               </select>
@@ -294,7 +337,7 @@ export const ContentItemModal: React.FC<ContentItemModalProps> = ({
               Workflow Status
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {(['Not Started', 'In Progress', 'Pending Approval', 'Approved', 'Published', 'On Hold'] as ContentStatus[]).map((st) => (
+              {(['Not Started', 'In Progress', 'Completed', 'Pending Approval', 'Approved', 'Published', 'On Hold'] as ContentStatus[]).map((st) => (
                 <button
                   key={st}
                   type="button"
@@ -308,6 +351,103 @@ export const ContentItemModal: React.FC<ContentItemModalProps> = ({
                   {st}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Assigned Team Members Multi-Select */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-amber-400" />
+                <span>Assigned Team Members</span>
+              </label>
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="text-slate-400 font-medium">
+                  {selectedAssigneeUids.length} selected
+                </span>
+                <span className="text-slate-500 font-normal">· Optional</span>
+              </div>
+            </div>
+
+            {/* Removable chips of selected members above list */}
+            {selectedAssigneeUids.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-slate-950/60 rounded-xl border border-slate-800">
+                {selectedAssigneeUids.map((uid) => {
+                  const member = teamMembers.find((m) => m.uid === uid);
+                  const existingAssignee = getItemAssignees(itemToEdit).find((a) => a.uid === uid);
+                  const name = member?.name || existingAssignee?.name || 'Member';
+                  const isInactive = member ? !member.active : existingAssignee?.active === false;
+
+                  return (
+                    <span
+                      key={uid}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
+                        isInactive
+                          ? 'bg-slate-800 text-slate-400 border-slate-700'
+                          : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                      }`}
+                    >
+                      <span>{name}</span>
+                      {isInactive && (
+                        <span className="text-[10px] text-amber-400 font-semibold">(inactive)</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAssignee(uid)}
+                        className="text-slate-400 hover:text-white transition-colors ml-0.5"
+                        title={`Remove ${name}`}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Scrollable list of active team members + already-assigned inactive members */}
+            <div className="max-h-48 overflow-y-auto space-y-1 p-2 bg-slate-950/80 rounded-xl border border-slate-800">
+              {visibleTeamMembers.length === 0 ? (
+                <div className="p-3 text-center text-xs text-slate-500">
+                  No team members available.
+                </div>
+              ) : (
+                visibleTeamMembers.map((m) => {
+                  const isSelected = selectedAssigneeUids.includes(m.uid);
+                  return (
+                    <label
+                      key={m.uid}
+                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors text-xs ${
+                        isSelected
+                          ? 'bg-slate-800/80 border border-slate-700 text-white'
+                          : 'hover:bg-slate-900/80 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleAssignee(m.uid)}
+                          className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                        />
+                        <div className="min-w-0 truncate">
+                          <span className="font-semibold">{m.name}</span>
+                          {m.roleTitle && (
+                            <span className="text-slate-400 ml-1.5 font-normal">
+                              ({m.roleTitle})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {!m.active && (
+                        <span className="text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20 shrink-0 ml-2">
+                          inactive
+                        </span>
+                      )}
+                    </label>
+                  );
+                })
+              )}
             </div>
           </div>
 

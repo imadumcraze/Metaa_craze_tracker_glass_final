@@ -1,9 +1,43 @@
-import { Client, MonthlyPackage, ContentItem, ContentType, ContentStatus } from '../types';
+import { Client, MonthlyPackage, ContentItem, ContentType, ContentStatus, TeamMember, TeamTask, UserRole, ContentNote } from '../types';
+import { getSriLankaToday } from './dateUtils';
 
 const CLIENTS_KEY = 'metaa_craze_clients_v1';
 const PACKAGES_KEY = 'metaa_craze_packages_v1';
 const CONTENT_KEY = 'metaa_craze_content_v1';
+const CONTENT_NOTES_KEY = 'metaa_craze_content_notes_v1';
+const TEAM_MEMBERS_KEY = 'metaa_craze_team_members_v1';
+const TEAM_TASKS_KEY = 'metaa_craze_team_tasks_v1';
 const ACCESS_SESSION_KEY = 'metaa_craze_access_session_v1';
+
+export const initialTeamMembers: TeamMember[] = [
+  {
+    uid: 'team-mem-1',
+    name: 'Kasun Bandara',
+    roleTitle: 'Senior Graphic Designer',
+    username: 'kasun.design',
+    active: true,
+    createdAt: '2026-08-01T10:00:00Z',
+    createdBy: 'imadu.mcraze@gmail.com'
+  },
+  {
+    uid: 'team-mem-2',
+    name: 'Nimesha Perera',
+    roleTitle: 'Video Editor & Motion Designer',
+    username: 'nimesha.video',
+    active: true,
+    createdAt: '2026-08-15T11:00:00Z',
+    createdBy: 'imadu.mcraze@gmail.com'
+  },
+  {
+    uid: 'team-mem-3',
+    name: 'Tharindu Fernando',
+    roleTitle: 'Copywriter & Content Strategist',
+    username: 'tharindu.content',
+    active: true,
+    createdAt: '2026-09-01T09:30:00Z',
+    createdBy: 'imadu.mcraze@gmail.com'
+  }
+];
 
 export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -210,7 +244,11 @@ export const initialContent: ContentItem[] = [
     postUrl: 'https://instagram.com/p/DB1example01',
     remarks: 'Approved by Dinesh without revisions. Reached 3.4k impressions.',
     createdAt: '2026-09-28T10:00:00Z',
-    updatedAt: '2026-10-05T14:30:00Z'
+    updatedAt: '2026-10-05T14:30:00Z',
+    assignedToId: 'team-mem-1',
+    assignedToName: 'Kasun Bandara',
+    assignedToRole: 'Senior Graphic Designer',
+    assignedToActive: true
   },
   {
     id: 'cnt-102',
@@ -229,7 +267,11 @@ export const initialContent: ContentItem[] = [
     postUrl: 'https://instagram.com/p/DB1example02',
     remarks: 'Carousel format showing cuff stitching and linen weave.',
     createdAt: '2026-09-28T10:15:00Z',
-    updatedAt: '2026-10-10T16:00:00Z'
+    updatedAt: '2026-10-10T16:00:00Z',
+    assignedToId: 'team-mem-1',
+    assignedToName: 'Kasun Bandara',
+    assignedToRole: 'Senior Graphic Designer',
+    assignedToActive: true
   },
   {
     id: 'cnt-103',
@@ -248,7 +290,11 @@ export const initialContent: ContentItem[] = [
     postUrl: '',
     remarks: 'Client approved caption and colour palette on 12th Oct.',
     createdAt: '2026-09-28T10:30:00Z',
-    updatedAt: '2026-10-12T09:20:00Z'
+    updatedAt: '2026-10-12T09:20:00Z',
+    assignedToId: 'team-mem-3',
+    assignedToName: 'Tharindu Fernando',
+    assignedToRole: 'Copywriter & Content Strategist',
+    assignedToActive: true
   },
   {
     id: 'cnt-104',
@@ -267,7 +313,11 @@ export const initialContent: ContentItem[] = [
     postUrl: '',
     remarks: 'Drafting 4-slide carousel layout with moodboard graphics.',
     createdAt: '2026-09-28T10:45:00Z',
-    updatedAt: '2026-10-14T11:00:00Z'
+    updatedAt: '2026-10-14T11:00:00Z',
+    assignedToId: 'team-mem-1',
+    assignedToName: 'Kasun Bandara',
+    assignedToRole: 'Senior Graphic Designer',
+    assignedToActive: true
   },
   {
     id: 'cnt-105',
@@ -305,7 +355,11 @@ export const initialContent: ContentItem[] = [
     postUrl: 'https://www.tiktok.com/@apexapparel/video/72899120938',
     remarks: 'High organic engagement. Over 15k views on TikTok.',
     createdAt: '2026-09-28T11:15:00Z',
-    updatedAt: '2026-10-08T18:00:00Z'
+    updatedAt: '2026-10-08T18:00:00Z',
+    assignedToId: 'team-mem-2',
+    assignedToName: 'Nimesha Perera',
+    assignedToRole: 'Video Editor & Motion Designer',
+    assignedToActive: true
   },
   {
     id: 'cnt-107',
@@ -324,7 +378,11 @@ export const initialContent: ContentItem[] = [
     postUrl: '',
     remarks: 'Submitted 45s reel preview to Dinesh on WhatsApp for final nod.',
     createdAt: '2026-09-28T11:30:00Z',
-    updatedAt: '2026-10-13T16:45:00Z'
+    updatedAt: '2026-10-13T16:45:00Z',
+    assignedToId: 'team-mem-2',
+    assignedToName: 'Nimesha Perera',
+    assignedToRole: 'Video Editor & Motion Designer',
+    assignedToActive: true
   },
   {
     id: 'cnt-108',
@@ -866,11 +924,78 @@ export const saveContent = (content: ContentItem[]): void => {
   }
 };
 
+export const getStoredTeamMembers = (): TeamMember[] => {
+  try {
+    const raw = localStorage.getItem(TEAM_MEMBERS_KEY);
+    if (!raw) {
+      localStorage.setItem(TEAM_MEMBERS_KEY, JSON.stringify(initialTeamMembers));
+      return initialTeamMembers;
+    }
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('Error reading team members from storage:', e);
+    return initialTeamMembers;
+  }
+};
+
+export const saveTeamMembers = (members: TeamMember[]): void => {
+  try {
+    localStorage.setItem(TEAM_MEMBERS_KEY, JSON.stringify(members));
+  } catch (e) {
+    console.error('Error saving team members:', e);
+  }
+};
+
+export const getStoredTeamTasks = (): TeamTask[] => {
+  try {
+    const raw = localStorage.getItem(TEAM_TASKS_KEY);
+    if (!raw) {
+      return [];
+    }
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('Error reading team tasks from storage:', e);
+    return [];
+  }
+};
+
+export const saveTeamTasks = (tasks: TeamTask[]): void => {
+  try {
+    localStorage.setItem(TEAM_TASKS_KEY, JSON.stringify(tasks));
+  } catch (e) {
+    console.error('Error saving team tasks:', e);
+  }
+};
+
+export const getStoredContentNotes = (): ContentNote[] => {
+  try {
+    const raw = localStorage.getItem(CONTENT_NOTES_KEY);
+    if (!raw) {
+      return [];
+    }
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('Error reading content notes from storage:', e);
+    return [];
+  }
+};
+
+export const saveContentNotes = (notes: ContentNote[]): void => {
+  try {
+    localStorage.setItem(CONTENT_NOTES_KEY, JSON.stringify(notes));
+  } catch (e) {
+    console.error('Error saving content notes:', e);
+  }
+};
+
 // Reset to sample data helper
 export const resetToInitialData = () => {
   localStorage.setItem(CLIENTS_KEY, JSON.stringify(initialClients));
   localStorage.setItem(PACKAGES_KEY, JSON.stringify(initialPackages));
   localStorage.setItem(CONTENT_KEY, JSON.stringify(initialContent));
+  localStorage.setItem(CONTENT_NOTES_KEY, JSON.stringify([]));
+  localStorage.setItem(TEAM_MEMBERS_KEY, JSON.stringify(initialTeamMembers));
+  localStorage.setItem(TEAM_TASKS_KEY, JSON.stringify([]));
 };
 
 const ADMIN_USERS_KEY = 'metaa_craze_admin_users_v1';
@@ -904,7 +1029,7 @@ export const saveAdminUsers = (users: any[]) => {
   }
 };
 
-export const getStoredAccessSession = (): { role: 'admin' | 'viewer' | 'client'; clientId?: string } => {
+export const getStoredAccessSession = (): { role: UserRole; clientId?: string } => {
   try {
     const raw = localStorage.getItem(ACCESS_SESSION_KEY);
     if (raw) {
@@ -916,7 +1041,7 @@ export const getStoredAccessSession = (): { role: 'admin' | 'viewer' | 'client';
   return { role: 'admin' };
 };
 
-export const saveAccessSession = (session: { role: 'admin' | 'viewer' | 'client'; clientId?: string }): void => {
+export const saveAccessSession = (session: { role: UserRole; clientId?: string }): void => {
   try {
     localStorage.setItem(ACCESS_SESSION_KEY, JSON.stringify(session));
   } catch (e) {
@@ -935,7 +1060,7 @@ export const formatDisplayNumber = (type: ContentType, num: number): string => {
 };
 
 // Check if content item is overdue
-export const isContentOverdue = (item: ContentItem, referenceDateStr: string = new Date().toISOString().split('T')[0]): boolean => {
+export const isContentOverdue = (item: ContentItem, referenceDateStr: string = getSriLankaToday()): boolean => {
   if (item.status === 'Published') return false;
   if (!item.plannedDate) return false;
   return item.plannedDate < referenceDateStr;
